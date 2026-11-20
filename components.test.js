@@ -34,10 +34,10 @@ test('rotation changes asymmetric footprints and exhaust zones consistently',()=
     const exhaust=exhaustCells(c);assert.ok(exhaust.every(k=>!componentCells(c).includes(k)));
     if(type==='small-thruster')assert.equal(exhaust.length,5);
   }
-  assert.deepEqual(exhaustCells({type:'small-thruster',x:5,y:6,rotation:0}),['5,8','5,9','5,10','5,11','5,12']);
-  assert.deepEqual(exhaustCells({type:'small-thruster',x:5,y:6,rotation:1}),['4,6','3,6','2,6','1,6','0,6']);
-  assert.deepEqual(exhaustCells({type:'small-thruster',x:5,y:6,rotation:2}),['5,5','5,4','5,3','5,2','5,1']);
-  assert.deepEqual(exhaustCells({type:'small-thruster',x:5,y:6,rotation:3}),['7,6','8,6','9,6','10,6','11,6']);
+  assert.deepEqual(exhaustCells({type:'small-thruster',x:5,y:6,rotation:0}),['5,5','5,4','5,3','5,2','5,1']);
+  assert.deepEqual(exhaustCells({type:'small-thruster',x:5,y:6,rotation:1}),['7,6','8,6','9,6','10,6','11,6']);
+  assert.deepEqual(exhaustCells({type:'small-thruster',x:5,y:6,rotation:2}),['5,8','5,9','5,10','5,11','5,12']);
+  assert.deepEqual(exhaustCells({type:'small-thruster',x:5,y:6,rotation:3}),['4,6','3,6','2,6','1,6','0,6']);
 });
 test('all components place, report their missing support, and erase from any footprint tile',()=>{
   for(const def of COMPONENTS){
@@ -75,9 +75,9 @@ test('wall-mounted oxygen pumps share hull and flag wall removal',()=>{
 });
 test('thruster obstruction is reported after floor changes and rotates with the thruster',()=>{
   let s=apply(engine(),'small-thruster',['5,5'],false,1).state;
-  s=apply(s,'floor',['4,5','5,5','6,5']).state;
-  assert.deepEqual(validate(s).blockedExhaust,['4,5']);
-  s=apply(s,'floor',['4,5'],true).state;assert.equal(validate(s).blockedExhaust.length,0);
+  s=apply(s,'floor',['7,5','5,5','6,5']).state;
+  assert.deepEqual(validate(s).blockedExhaust,['7,5']);
+  s=apply(s,'floor',['7,5'],true).state;assert.equal(validate(s).blockedExhaust.length,0);
 });
 test('shield generators must have their center inside the engine field',()=>{
   const s=apply(engine(),'extender',['18,0']).state;
@@ -197,4 +197,20 @@ test('hit testing finds empty space and pump edge; tile moves cannot merge into 
   assert.deepEqual(hitItem(s,{x:5.5,y:6.1}),{kind:'component',index:0});
   assert.deepEqual(itemPosition(s,{kind:'floor',key:'6,5'}),{x:6,y:5});
   assert.equal(moveItem(s,{kind:'floor',key:'5,5'},{x:6,y:5}).rejected,1);
+});
+
+test('both thruster sizes clear the nozzle side of their native and mirrored artwork',()=>{
+  // The east image has its gold nozzle on the left; the north image has it below.
+  for(const type of ['small-thruster','large-thruster'])for(let rotation=0;rotation<4;rotation++){
+    const c={type,x:5,y:6,rotation},b=componentBounds(c),def=componentDefinition(type);
+    const cells=exhaustCells(c).map(k=>k.split(',').map(Number));
+    assert.equal(cells.length,def.width*def.exhaust);
+    for(const [x,y] of cells){
+      assert.ok(rotation===0?y<b.y:rotation===1?x>=b.x+b.width:rotation===2?y>=b.y+b.height:x<b.x,`${type}, rotation ${rotation}: nozzle side`);
+    }
+    const front=rotation===0?`${b.x},${b.y-1}`:rotation===1?`${b.x+b.width},${b.y}`:rotation===2?`${b.x},${b.y+b.height}`:`${b.x-1},${b.y}`;
+    let s=apply(engine(),type,['5,6'],false,rotation).state;
+    s=apply(s,'floor',[front]).state;
+    assert.ok(validate(s).blockedExhaust.includes(front),`${type}, rotation ${rotation}: obstruction checks use nozzle side`);
+  }
 });
