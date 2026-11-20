@@ -4,3 +4,5 @@
 .swatch.engine-boundary{border:2px solid #f1cc7b;background:#142326}#engine-boundary-legend{display:inline-flex;align-items:center;gap:7px;color:#f1cc7b;margin-left:12px}#engine-boundary-legend[hidden]{display:none}.board-legend{flex-wrap:wrap;max-width:calc(100% - 160px);row-gap:8px}
 
 #select-mode{width:100%;margin-bottom:12px;text-align:left}#select-mode.active{background:#43544e;border-color:#a4bfae}
+
+.footer-credit{margin:12px 0;font-size:13px}.footer-links{display:flex;flex-direction:column;gap:6px}@media(max-width:650px){.sidebar-footer{display:block;grid-column:1/-1;border-top:1px solid var(--line)}}
