@@ -51,6 +51,8 @@ npm test
 
 The tests cover placement rules, field geometry, rotation, replacement, movement, local save data, and editor interactions using a simulated DOM/canvas.
 
+The optional [4x4 hull rendering audit](HULL_4X4_AUDIT.md) exercises the actual canvas renderer across 167,139 layouts and records reference candidates. Its native canvas dependency is only needed for that audit.
+
 ## Project files
 
 - `app.js`, `index.html`, `style.css`: editor interface and canvas rendering.

@@ -57,6 +57,66 @@ test('hull draw commands are limited to quarter-cell patches with consistent tra
   assert.equal(calls.length,layout.tiles.size*4);
   for(const args of calls){assert.equal(args[3],32);assert.equal(args[4],32);assert.ok(args[7]<=16.1);assert.ok(args[8]<=16.1);}
 });
+
+test('singular hull caps stay upright and unmirrored in rotated and mirrored layouts',()=>{
+  const cases=[
+    {rows:['H'],count:1},
+    {rows:['SH','HS'],count:2},
+    {rows:['H.H','.H.','H.H'],count:5},
+    {rows:['HSH','.H.','HSH'],count:5},
+    {rows:['HSH','.H.','H.H'],count:5},
+    {rows:['H.H.','.H.H','H.H.'],count:3},
+    {rows:['HSS','SHS','SSH'],count:3},
+  ];
+  const textures=Object.fromEntries(HULL_REFERENCES.map(r=>[r.id,{width:r.cols*64,height:r.height*64}]));
+  for(const fixture of cases){let rows=fixture.rows;
+    for(let turn=0;turn<4;turn++){
+      for(const grid of [rows,rows.map(row=>[...row].reverse().join(''))]){
+        const singles=[...hullTopology(stateFor(grid)).tiles.values()].filter(cell=>cell.single);
+        assert.equal(singles.length,fixture.count,grid.join('/'));
+        for(const cell of singles){
+          const calls=[],rejectTransform=()=>assert.fail('singular hull artwork must not be transformed');
+          const ctx={drawImage:(...args)=>calls.push(args),rotate:rejectTransform,scale:rejectTransform,translate:rejectTransform};
+          drawHull(ctx,{tiles:new Map([[key(cell.x,cell.y),cell]])},textures,(x,y)=>({x:x*32,y:y*32}),32);
+          assert.equal(calls.length,1,'draw the complete native cap in one pass');
+          assert.deepEqual(calls[0],[textures[cell.single.ref.id],cell.single.x*64,cell.single.y*64,64,64,cell.x*32,cell.y*32,32,32]);
+        }
+      }
+      rows=rotated(rows);
+    }
+  }
+});
+
+test('connected diagonal hull retains its directional quarter artwork',()=>{
+  for(let rows of [['HSS','.HS','..H'],['..H','.H.','H..']]){
+    for(let turn=0;turn<4;turn++){
+      const layout=hullTopology(stateFor(rows));
+      assert.ok([...layout.tiles.values()].filter(cell=>cell.host==='H').every(cell=>!cell.single));
+      rows=rotated(rows);
+    }
+  }
+});
+
+test('upward and downward parallel chevrons use their native reference artwork',()=>{
+  const original=HULL_REFERENCES.find(ref=>ref.id==='parallelDiagonalChains').rows;
+  for(const [turns,id] of [[1,'parallelDiagonalChains90'],[3,'parallelDiagonalChains270']]){
+    let rows=original;for(let turn=0;turn<turns;turn++)rows=rotated(rows);
+    const layout=hullTopology(stateFor(rows));
+    const caps=[...layout.tiles.values()].filter(cell=>cell.single);
+    assert.equal(caps.length,3);
+    const chevron=[...layout.tiles.values()].filter(cell=>cell.host==='H'&&!cell.single);
+    assert.equal(chevron.length,3);
+    for(const cell of chevron)for(const q of cell.quarters){
+      assert.equal(q.ref.id,id,'use the supplied directional drawing rather than a rotated side chevron');
+      assert.equal(q.turns,0);assert.equal(q.flip,false);
+      assert.equal(q.signature,cell.context);
+    }
+    // The enclosed gap is part of the reference too; keep it coherent with the arms.
+    const gap=layout.tiles.get(turns===1?'1,2':'1,1');
+    assert.ok(gap);
+    for(const q of gap.quarters){assert.equal(q.ref.id,id);assert.equal(q.turns,0);assert.equal(q.flip,false);}
+  }
+});
 test('texture preparation leaves the original pixel buffer untouched',()=>{
   const ref=HULL_REFERENCES[0],raw=new Uint8ClampedArray([65,65,65,255,106,121,132,255]),original=raw.slice();let output;
   const image={width:2,height:1};
@@ -82,6 +142,34 @@ test('staircase middle tiles and cardinal cross use the new reference artwork',(
   for(const cell of cross.tiles.values())for(const q of cell.quarters)assert.equal(q.ref.id,'cardinalCross');
 });
 
+test('mixed diagonal junction centers use one isolated cap rather than crossing wall pieces',()=>{
+  for(const id of ['checkerboardMixedFloor','diagonalJunctionMixedFloor']){
+    let rows=HULL_REFERENCES.find(ref=>ref.id===id).rows;
+    for(let turn=0;turn<4;turn++){
+      const center=hullTopology(stateFor(rows)).tiles.get('1,1');
+      assert.equal(new Set(center.quarters.map(q=>`${q.ref.id}:${q.x},${q.y}:${q.turns}:${q.flip}`)).size,1);
+      for(const q of center.quarters){
+        assert.equal(q.ref.id,id);
+        for(const i of [7,11,13,17])assert.notEqual(q.signature[i],'H');
+      }
+      rows=rotated(rows);
+    }
+  }
+});
+
+test('diagonal references cannot add bevels across gaps floored on both sides',()=>{
+  for(let rows of [['HSS','SHS','SSH'],['HSH','SHS','SSS'],['HSH','SHS','HSH']]){
+    for(let turn=0;turn<4;turn++){
+      const layout=hullTopology(stateFor(rows));
+      assert.ok([...layout.tiles.values()].every(cell=>cell.host!=='S'),rows.join('/'));
+      rows=rotated(rows);
+    }
+  }
+  // A one-sided floored diagonal still needs its native small inside bevel.
+  const layout=hullTopology(stateFor(['HSS','.HS','..H']));
+  assert.ok([...layout.tiles.values()].some(cell=>cell.host==='S'));
+});
+
 test('floor-surrounded walls and junctions preserve the cardinal connections in every orientation',()=>{
   const layouts=[['SSS','HHH','SSS'],['SHS','HHH','SHS'],['SSHS','HHHH','SSHS'],['SSS','HHH','SHS'],['HSH','HSH','HSH'],['HHH','HSH','HHH']];
   for(let rows of layouts)for(let turn=0;turn<4;turn++){
@@ -96,21 +184,29 @@ test('floor-surrounded walls and junctions preserve the cardinal connections in 
   }
 });
 
-test('all 2543 ordinary 3x3 neighborhoods preserve the center hull cardinal edges',()=>{
+test('all 6561 mixed 3x3 neighborhoods preserve the center hull cardinal edges',()=>{
   let checked=0;
   for(let n=0;n<3**8;n++){
     let code=n;const rows=Array.from({length:3},()=>Array(3).fill('.'));rows[1][1]='H';
     for(let i=0;i<9;i++)if(i!==4){rows[Math.floor(i/3)][i%3]=['.','S','H'][code%3];code=Math.floor(code/3);}
-    const at=(x,y)=>rows[y]?.[x];let diagonalGap=false;
-    for(let y=-1;y<=3;y++)for(let x=-1;x<=3;x++)if(!['S','H'].includes(at(x,y))){
-      if([[1,1],[-1,1],[-1,-1],[1,-1]].some(([sx,sy])=>at(x+sx,y)==='H'&&at(x,y+sy)==='H'))diagonalGap=true;
-    }
-    // Diagonal joins have different artwork rules and need separate game references.
-    if(diagonalGap)continue;
     const cell=hullTopology(stateFor(rows.map(row=>row.join('')))).tiles.get('1,1');checked++;
     for(const q of cell.quarters)for(const i of [12+(q.qx?1:-1),12+(q.qy?5:-5)]){
       assert.equal(q.signature[i]==='H',cell.context[i]==='H',`${rows} at edge ${i}`);
     }
   }
-  assert.equal(checked,2543);
+  assert.equal(checked,6561);
+});
+
+test('unpictured 4x4 transitions never invent or remove facing hull neighbors',()=>{
+  for(let rows of [['.HH.','H.H.','H...','....'],['H.H.','HH..','.H..','....'],['SH..','.HS.','H...','....']]){
+    for(let turn=0;turn<4;turn++){
+      for(const grid of [rows,rows.map(row=>[...row].reverse().join(''))]){
+        for(const cell of hullTopology(stateFor(grid)).tiles.values())if(cell.host==='H')for(const q of cell.quarters){
+          assert.ok(q,grid.join('/'));
+          for(const i of [12+(q.qx?1:-1),12+(q.qy?5:-5)])assert.equal(q.signature[i]==='H',cell.context[i]==='H',grid.join('/'));
+        }
+      }
+      rows=rotated(rows);
+    }
+  }
 });
