@@ -47,7 +47,7 @@ function createEditor(){
 test('editor boots and supports palette, Q/E/buttons, placement, undo/redo and local save',()=>{
   const {nodes,ids,storage,events,requestedImages,hullCalls,queryAll,flush}=createEditor();
   const action=fn=>{fn();flush();};
-  assert.equal(queryAll('.component-item').length,14);
+  assert.equal(queryAll('.component-item').length,15);
   assert.equal(ids.get('diagonal-hull').checked,false);
   assert.equal(hullCalls.topology,0);assert.equal(hullCalls.prepare,0);assert.equal(hullCalls.diagonal,0);
   assert.ok(hullCalls.simple>0);
@@ -177,4 +177,31 @@ test('saved-design cache observes external storage changes without revalidating 
   assert.equal(ids.get('saved-count').textContent,1);assert.equal(counters.libraryReads,before.libraryReads+1);
   assert.equal(counters.validation,before.validation);assert.equal(counters.fields,before.fields);
   ids.get('name').oninput();flush();assert.equal(counters.libraryReads,before.libraryReads+1);
+});
+
+test('solar generator is searchable, fixed at 4x4, and places, moves, saves and erases by its full footprint',()=>{
+  const {ids,nodes,storage,requestedImages,flush}=createEditor(),canvas=ids.get('canvas');
+  const pointer=(x,y,button=0)=>({button,pointerId:1,clientX:450+x*22+11,clientY:300+y*22+11,preventDefault(){}});
+  const click=(x,y,button=0)=>{canvas.onpointerdown(pointer(x,y,button));canvas.onpointerup(pointer(x,y,button));flush();};
+  const saved=()=>{ids.get('save').onclick();flush();return JSON.parse(storage.get('gravship-designs-v1'))[0].state;};
+  click(0,0);
+  ids.get('component-search').value='solar';ids.get('component-search').oninput();
+  const visible=nodes.filter(n=>n.className.split(' ').includes('component-item')&&!n.hidden);
+  assert.equal(visible.length,1);assert.equal(visible[0].dataset.layer,'solar-generator');visible[0].onclick();flush();
+  assert.ok(requestedImages.includes('assets/Solar_generator.png'));
+  assert.equal(ids.get('rotation-label').textContent,'Fixed');assert.equal(ids.get('rotate').disabled,true);
+  assert.ok(ids.get('shape-label').textContent.startsWith('4 × 4'));
+  click(4,4);let design=saved();const solar=design.components[0],cells=catalogue.componentCells(solar);
+  assert.equal(solar.type,'solar-generator');assert.equal(cells.length,16);
+  assert.ok(cells.every(k=>model.validate(design).missing.includes(k)));
+  assert.equal(model.apply(design,'heater',['7,7']).rejected,1,'bottom-right tile blocks other components');
+  nodes.find(n=>n.dataset.layer==='floor').onclick();flush();
+  nodes.find(n=>n.dataset.shape==='filled').onclick();flush();
+  canvas.onpointerdown(pointer(4,4));canvas.onpointerup(pointer(7,7));flush();design=saved();
+  assert.equal(design.floor.length,16);assert.ok(cells.every(k=>!model.validate(design).missing.includes(k)));
+  ids.get('select-mode').onclick();flush();
+  canvas.onpointerdown(pointer(7,7));canvas.onpointermove(pointer(12,8));canvas.onpointerup(pointer(12,8));flush();
+  const moved=saved();assert.equal(moved.components[0].x,9);assert.equal(moved.components[0].y,5);assert.deepEqual(moved.floor,design.floor);
+  ids.get('undo').onclick();flush();assert.equal(saved().components[0].x,4);
+  visible[0].onclick();flush();click(7,7,2);assert.equal(saved().components.length,0);assert.equal(saved().floor.length,16);
 });

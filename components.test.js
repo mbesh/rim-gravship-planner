@@ -5,8 +5,8 @@ import {COMPONENTS,componentDefinition,componentBounds,componentCells,componentS
 import {blank,apply,validate,sanitize,hitItem,itemPosition,moveItem} from './model.js';
 const engine=()=>apply(blank(),'engine',['0,0']).state;
 test('component catalogue has wiki footprints and maximum counts',()=>{
-  const expected={'autodoor':[1,1,undefined],'small-tank':[2,2,undefined],'large-tank':[3,3,undefined],'small-thruster':[1,2,4],'large-thruster':[2,2,6],'pilot-console':[3,2,undefined],'signal-jammer':[2,2,undefined],'power-cell':[1,1,undefined],'fuel-optimizer':[2,2,2],'shield-generator':[3,3,2],'subpersona-core':[1,1,2],'oxygen-pump':[1,1,undefined],'vac-barrier':[1,1,undefined],'heater':[1,1,undefined]};
-  assert.equal(COMPONENTS.length,14);
+  const expected={'autodoor':[1,1,undefined],'small-tank':[2,2,undefined],'large-tank':[3,3,undefined],'small-thruster':[1,2,4],'large-thruster':[2,2,6],'pilot-console':[3,2,undefined],'signal-jammer':[2,2,undefined],'power-cell':[1,1,undefined],'fuel-optimizer':[2,2,2],'shield-generator':[3,3,2],'subpersona-core':[1,1,2],'oxygen-pump':[1,1,undefined],'vac-barrier':[1,1,undefined],'heater':[1,1,undefined],'solar-generator':[4,4,undefined]};
+  assert.equal(COMPONENTS.length,15);
   for(const c of COMPONENTS)assert.deepEqual([c.width,c.height,c.limit],expected[c.id],c.id);
 });
 test('all catalogue sprites exist and downloaded images are actual PNGs',()=>{

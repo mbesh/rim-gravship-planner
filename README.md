@@ -21,7 +21,7 @@ npm start -- --port 5174
 - Place one grav engine, then draw substructure beneath and around it.
 - Draw individual tiles, straight or diagonal lines, outlined or filled rectangles, and outlined or filled circles.
 - Place up to six grav field extenders. The planner uses the stepped engine and extender field layouts supplied in the reference screenshots.
-- Add tanks, thrusters, a pilot console, upgrades, life-support equipment, and autodoors. The palette shows footprints and stated component limits, with links to the wiki.
+- Add tanks, thrusters, a pilot console, upgrades, life-support equipment, autodoors, and solar generators. The palette shows footprints and stated component limits, with links to the wiki. Solar generators are fixed 4 × 4 components under Power and need 16 supporting substructure tiles.
 - Watch design checks for missing foundations, disconnected substructure, unsupported tiles, blocked thruster clearance, and invalid pump placement.
 - Save and load named designs in browser local storage. Designs stay on the same browser, device, and origin (including port).
 - Hull uses fast, cardinal-only rendering by default. Under Rendering, enable **Render diagonal in hull (slower performance)** for the detailed diagonal artwork. This view option leaves the design unchanged and starts off on each page load.
