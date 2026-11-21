@@ -1,3 +1,5 @@
+import {COMPONENTS} from './components.js';
+import {checkPlacement,previewMove,moveItem,itemCells} from './model.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {blank,apply,validate,capacity,inField,shapeCells,footprint,sanitize,inEngineField,inExtenderField,fieldCells} from './model.js';
@@ -88,4 +90,46 @@ test('circle handles a click, small radii and diagonal drags',()=>{
     assert.ok(shapeCells('circle',{x:0,y:0},{x:radius,y:0}).every(k=>disc.has(k)));
   }
   assert.deepEqual(shapeCells('disc',{x:0,y:0},{x:3,y:4}),shapeCells('disc',{x:0,y:0},{x:5,y:0}));
+});
+
+
+test('placement and movement previews are read-only and never clone the design',()=>{
+  let s=engine();s=apply(s,'hull',['5,5','8,5']).state;s=apply(s,'oxygen-pump',['5,5'],false,2).state;
+  const snapshot=structuredClone(s),clone=globalThis.structuredClone;
+  const freeze=value=>{if(value&&typeof value==='object'){Object.freeze(value);for(const v of Object.values(value))freeze(v);}};freeze(s);
+  globalThis.structuredClone=()=>{throw new Error('preview cloned the ship');};
+  try{
+    assert.equal(checkPlacement(s,'oxygen-pump','8,5',2).rejected,0);
+    assert.equal(checkPlacement(s,'oxygen-pump','9,5',2).rejected,1);
+    const item={kind:'component',index:0},preview=previewMove(s,item,{x:8,y:5});
+    assert.equal(preview.rejected,0);assert.deepEqual(preview.cells,['8,5']);assert.equal(preview.position.rotation,2);
+    assert.equal(previewMove(s,item,{x:9,y:5}).rejected,1);
+    assert.deepEqual(s,snapshot);
+  }finally{globalThis.structuredClone=clone;}
+});
+
+test('read-only placement feedback agrees with actual edits across components and rotations',()=>{
+  let s=apply(engine(),'extender',['18,0']).state;
+  s=apply(s,'hull',['5,5','8,5','8,6']).state;s=apply(s,'oxygen-pump',['5,5'],false,2).state;
+  s=apply(s,'small-tank',['10,0']).state;
+  const original=structuredClone(s);
+  for(const layer of ['engine','extender','floor','hull',...COMPONENTS.map(c=>c.id)])for(let rotation=0;rotation<4;rotation++)for(const k of ['0,0','5,5','5,4','8,5','8,6','10,0','15,5','18,0','30,0','35,0']){
+    const preview=checkPlacement(s,layer,k,rotation),edit=apply(s,layer,[k],false,rotation);
+    assert.equal(preview.rejected,edit.rejected,layer+' '+k);assert.equal(preview.message,edit.message,layer+' '+k);
+  }
+  assert.deepEqual(s,original);
+});
+
+test('movement previews exclude the source, preserve limits, and predict committed footprints',()=>{
+  let s=engine();for(const k of ['5,5','8,5','11,5','14,5'])s=apply(s,'small-thruster',[k]).state;
+  s=apply(s,'floor',['5,5','6,5']).state;s=apply(s,'hull',['5,5','6,5']).state;
+  s=apply(s,'extender',['18,0']).state;
+  const original=structuredClone(s);
+  for(const item of [{kind:'component',index:0},{kind:'engine'},{kind:'extender',index:0},{kind:'floor',key:'5,5'},{kind:'hull',key:'5,5'}])for(const target of [{x:5,y:5},{x:6,y:5},{x:8,y:8},{x:0,y:0},{x:18,y:0},{x:35,y:0},{x:200,y:0}]){
+    const preview=previewMove(s,item,target),edit=moveItem(s,item,target);
+    assert.equal(preview.rejected,edit.rejected,JSON.stringify({item,target}));assert.equal(preview.message,edit.message);
+    if(!preview.rejected)assert.deepEqual(preview.cells,itemCells(edit.state,edit.item));
+  }
+  assert.equal(previewMove(s,{kind:'component',index:0},{x:5,y:8}).rejected,0,'moving at maximum count is allowed');
+  assert.deepEqual(s,original);
 });
