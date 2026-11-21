@@ -7,7 +7,8 @@ import * as catalogue from './components.js';
 import * as hull from './hull.js';
 
 test('editor boots and supports palette, Q/E/buttons, placement, undo/redo and local save',()=>{
-  const nodes=[],ids=new Map(),storage=new Map(),events={};
+  const nodes=[],ids=new Map(),storage=new Map(),events={},requestedImages=[],hullCalls={topology:0,prepare:0,simple:0,diagonal:0};
+  const trackHull=(name,fn)=>(...args)=>{hullCalls[name]++;return fn(...args);};
   class Element{
     constructor(tag='div'){this.tagName=tag;this.dataset={};this.children=[];this.style={};this.attributes={};this.className='';this.value='';this.checked=true;this.hidden=false;this.classList={toggle:(c,on)=>{const set=new Set(this.className.split(' '));on?set.add(c):set.delete(c);this.className=[...set].join(' ');},add:()=>{},remove:()=>{}};nodes.push(this);}
     set innerHTML(value){this.html=value;if(value.includes('component-quantity')){const q=new Element('span');q.className='component-quantity';this.append(q);}}
@@ -29,9 +30,16 @@ test('editor boots and supports palette, Q/E/buttons, placement, undo/redo and l
   const document={getElementById:id=>{assert.ok(ids.has(id),`Missing element ${id}`);return ids.get(id);},createElement:t=>new Element(t),createTextNode:text=>({textContent:text}),querySelectorAll:queryAll,querySelector:q=>q==='dialog[open]'?[...ids.values()].find(n=>n.tagName==='dialog'&&n.open):null};
   const window={devicePixelRatio:1,addEventListener:(type,fn)=>events[type]=fn};
   const sandbox={...model,...catalogue,...hull,document,window,localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v)},structuredClone,crypto:{randomUUID:()=> 'test-design'},console,OffscreenCanvas:class{constructor(w,h){this.width=w;this.height=h;}getContext(){return {drawImage(){},getImageData:(x,y,w,h)=>({data:new Uint8ClampedArray(w*h*4)}),putImageData(){}};}},Image:class{set src(value){this.srcValue=value;const data=readFileSync(value);if(value.endsWith('.png')){this.width=data.readUInt32BE(16);this.height=data.readUInt32BE(20);}else{this.width=64;this.height=64;}this.onload?.();}},ResizeObserver:class{observe(){}},setTimeout:()=>0,clearTimeout:()=>{}};
+  for(const [name,fn] of [['topology','hullTopology'],['prepare','prepareHullTexture'],['simple','drawSimpleHull'],['diagonal','drawHull']])sandbox[fn]=trackHull(name,hull[fn]);
+  const MockImage=sandbox.Image;
+  sandbox.Image=class extends MockImage{set src(value){requestedImages.push(value);super.src=value;}};
   const source=readFileSync('app.js','utf8').replace(/^import .+;\r?\n/gm,'');
   vm.runInNewContext(source,sandbox,{filename:'app.js'});
   assert.equal(queryAll('.component-item').length,14);
+  assert.equal(ids.get('diagonal-hull').checked,false);
+  assert.equal(hullCalls.topology,0);assert.equal(hullCalls.prepare,0);assert.equal(hullCalls.diagonal,0);
+  assert.ok(hullCalls.simple>0);
+  assert.deepEqual(requestedImages.filter(path=>path.startsWith('assets/hull-')),['assets/hull-3x3.png']);
   const select=type=>nodes.find(n=>n.dataset.layer===type).onclick();
   const keyboard=key=>events.keydown({key,target:ids.get('canvas'),preventDefault(){}});
   const clickTile=(x,y)=>{const e={button:0,pointerId:1,clientX:450+x*22+11,clientY:300+y*22+11,preventDefault(){}};ids.get('canvas').onpointerdown(e);ids.get('canvas').onpointerup(e);};
@@ -77,4 +85,18 @@ test('editor boots and supports palette, Q/E/buttons, placement, undo/redo and l
   select('hull');clickTile(12,4);assert.ok(saveState().hull.includes('12,4'));assert.ok(!saveState().components.some(c=>c.type==='autodoor'));
   ids.get('undo').onclick();assert.ok(saveState().components.some(c=>c.type==='autodoor'));
   ids.get('component-search').value='tank';ids.get('component-search').oninput();assert.equal(queryAll('.component-item').filter(n=>!n.hidden).length,2);
+
+  // The slow renderer is opt-in, view-only, cached per design state, and loaded once.
+  const beforeToggle=saveState();assert.equal(hullCalls.topology,0);assert.equal(hullCalls.prepare,0);
+  const diagonal=ids.get('diagonal-hull');diagonal.checked=true;diagonal.onchange();
+  assert.equal(hullCalls.topology,1);assert.equal(hullCalls.prepare,hull.HULL_REFERENCES.length);assert.ok(hullCalls.diagonal>0);
+  assert.deepEqual(saveState(),beforeToggle);assert.equal(hullCalls.topology,1,'UI refresh does not rebuild unchanged hull');
+  const loadedImages=requestedImages.length,prepared=hullCalls.prepare;
+  diagonal.checked=false;diagonal.onchange();
+  const fastCalls=hullCalls.simple;select('hull');assert.ok(hullCalls.simple>fastCalls);assert.equal(hullCalls.topology,1);
+  diagonal.checked=true;diagonal.onchange();assert.equal(hullCalls.topology,1);assert.equal(requestedImages.length,loadedImages);assert.equal(hullCalls.prepare,prepared);
+  // A real edit invalidates the detailed layout; the next toggle itself preserves undo.
+  clickTile(13,4);assert.equal(hullCalls.topology,2);
+  diagonal.checked=false;diagonal.onchange();ids.get('undo').onclick();
+  assert.deepEqual(saveState(),beforeToggle);assert.equal(hullCalls.topology,2);
 });

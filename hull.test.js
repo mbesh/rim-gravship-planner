@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {existsSync} from 'node:fs';
-import {HULL_REFERENCES,hullTopology,hullPixelAlpha,prepareHullTexture,drawHull} from './hull.js';
+import {HULL_REFERENCES,hullTopology,hullPixelAlpha,prepareHullTexture,drawHull,drawSimpleHull} from './hull.js';
 const key=(x,y)=>`${x},${y}`;
 function stateFor(rows){const hull=[],floor=[];for(let y=0;y<rows.length;y++)for(let x=0;x<rows[y].length;x++){if(rows[y][x]==='H')hull.push(key(x,y));if(rows[y][x]!=='\u002e')floor.push(key(x,y));}return {hull,floor,components:[],extenders:[],engine:null};}
 function signature(s,x,y){return Array.from({length:25},(_,i)=>{const k=key(x+i%5-2,y+Math.floor(i/5)-2);return s.hull.includes(k)?'H':s.floor.includes(k)?'S':'.';}).join('');}
@@ -56,6 +56,27 @@ test('hull draw commands are limited to quarter-cell patches with consistent tra
   drawHull(ctx,layout,images,(x,y)=>({x:x*32,y:y*32}),32);
   assert.equal(calls.length,layout.tiles.size*4);
   for(const args of calls){assert.equal(args[3],32);assert.equal(args[4],32);assert.ok(args[7]<=16.1);assert.ok(args[8]<=16.1);}
+});
+
+test('fast hull rendering draws only placed tiles and never connects diagonally',()=>{
+  const calls=[],ctx={drawImage:(...args)=>calls.push(args)},image={width:192,height:192};
+  drawSimpleHull(ctx,stateFor(['H.','.H']),image,(x,y)=>({x:x*32,y:y*32}),32);
+  assert.equal(calls.length,8);
+  for(let tile=0;tile<2;tile++)for(let qy=0;qy<2;qy++)for(let qx=0;qx<2;qx++){
+    const call=calls[tile*4+qy*2+qx];
+    assert.equal(call[1],qx?160:0);assert.equal(call[2],qy?160:0);
+    assert.equal(call[5],tile*32+qx*16);assert.equal(call[6],tile*32+qy*16);
+  }
+});
+
+test('fast hull rendering joins cardinal neighbors and the correct barrier ends',()=>{
+  const image={width:192,height:192},screen=(x,y)=>({x:x*32,y:y*32});
+  const render=s=>{const calls=[];drawSimpleHull({drawImage:(...args)=>calls.push(args)},s,image,screen,32);return calls;};
+  const joined=render(stateFor(['HH']));assert.equal(joined[1][1],96);assert.equal(joined[4][1],64);
+  const s=stateFor(['H.']);s.components=[{type:'vac-barrier',x:1,y:0,rotation:0}];
+  const horizontal=render(s);assert.equal(horizontal.length,4);assert.equal(horizontal[1][1],96);
+  s.components[0].rotation=1;const vertical=render(s);assert.equal(vertical[1][1],160);
+  assert.doesNotThrow(()=>drawSimpleHull({},s,undefined,screen,32));
 });
 
 test('singular hull caps stay upright and unmirrored in rotated and mirrored layouts',()=>{

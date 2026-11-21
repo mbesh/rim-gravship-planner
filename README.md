@@ -24,6 +24,7 @@ npm start -- --port 5174
 - Add tanks, thrusters, a pilot console, upgrades, life-support equipment, and autodoors. The palette shows footprints and stated component limits, with links to the wiki.
 - Watch design checks for missing foundations, disconnected substructure, unsupported tiles, blocked thruster clearance, and invalid pump placement.
 - Save and load named designs in browser local storage. Designs stay on the same browser, device, and origin (including port).
+- Hull uses fast, cardinal-only rendering by default. Under Rendering, enable **Render diagonal in hull (slower performance)** for the detailed diagonal artwork. This view option leaves the design unchanged and starts off on each page load.
 
 ## Controls
 
