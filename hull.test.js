@@ -81,3 +81,36 @@ test('staircase middle tiles and cardinal cross use the new reference artwork',(
   const cross=hullTopology(stateFor(['.H.','HHH','.H.']));
   for(const cell of cross.tiles.values())for(const q of cell.quarters)assert.equal(q.ref.id,'cardinalCross');
 });
+
+test('floor-surrounded walls and junctions preserve the cardinal connections in every orientation',()=>{
+  const layouts=[['SSS','HHH','SSS'],['SHS','HHH','SHS'],['SSHS','HHHH','SSHS'],['SSS','HHH','SHS'],['HSH','HSH','HSH'],['HHH','HSH','HHH']];
+  for(let rows of layouts)for(let turn=0;turn<4;turn++){
+    const layout=hullTopology(stateFor(rows));
+    for(const cell of layout.tiles.values())if(cell.host==='H')for(const q of cell.quarters){
+      const ix=12+(q.qx?1:-1),iy=12+(q.qy?5:-5);
+      assert.equal(q.signature[ix]==='H',cell.context[ix]==='H',`${rows} ${cell.x},${cell.y}: horizontal edge`);
+      assert.equal(q.signature[iy]==='H',cell.context[iy]==='H',`${rows} ${cell.x},${cell.y}: vertical edge`);
+      if(q.method==='orthogonal')assert.equal(q.turns,0,'composed walls retain native top/bottom shading');
+    }
+    rows=rotated(rows);
+  }
+});
+
+test('all 2543 ordinary 3x3 neighborhoods preserve the center hull cardinal edges',()=>{
+  let checked=0;
+  for(let n=0;n<3**8;n++){
+    let code=n;const rows=Array.from({length:3},()=>Array(3).fill('.'));rows[1][1]='H';
+    for(let i=0;i<9;i++)if(i!==4){rows[Math.floor(i/3)][i%3]=['.','S','H'][code%3];code=Math.floor(code/3);}
+    const at=(x,y)=>rows[y]?.[x];let diagonalGap=false;
+    for(let y=-1;y<=3;y++)for(let x=-1;x<=3;x++)if(!['S','H'].includes(at(x,y))){
+      if([[1,1],[-1,1],[-1,-1],[1,-1]].some(([sx,sy])=>at(x+sx,y)==='H'&&at(x,y+sy)==='H'))diagonalGap=true;
+    }
+    // Diagonal joins have different artwork rules and need separate game references.
+    if(diagonalGap)continue;
+    const cell=hullTopology(stateFor(rows.map(row=>row.join('')))).tiles.get('1,1');checked++;
+    for(const q of cell.quarters)for(const i of [12+(q.qx?1:-1),12+(q.qy?5:-5)]){
+      assert.equal(q.signature[i]==='H',cell.context[i]==='H',`${rows} at edge ${i}`);
+    }
+  }
+  assert.equal(checked,2543);
+});
