@@ -4,6 +4,7 @@ import vm from 'node:vm';
 import {readFileSync} from 'node:fs';
 import * as model from './model.js';
 import * as catalogue from './components.js';
+import * as hull from './hull.js';
 
 test('editor boots and supports palette, Q/E/buttons, placement, undo/redo and local save',()=>{
   const nodes=[],ids=new Map(),storage=new Map(),events={};
@@ -27,7 +28,7 @@ test('editor boots and supports palette, Q/E/buttons, placement, undo/redo and l
   const queryAll=q=>q==='[data-layer]'?nodes.filter(n=>n.dataset.layer):q==='[data-shape]'?nodes.filter(n=>n.dataset.shape):q==='.component-item'?nodes.filter(n=>n.className.split(' ').includes('component-item')):q==='#component-options h3'?ids.get('component-options').children.filter(n=>n.tagName==='h3'):[];
   const document={getElementById:id=>{assert.ok(ids.has(id),`Missing element ${id}`);return ids.get(id);},createElement:t=>new Element(t),createTextNode:text=>({textContent:text}),querySelectorAll:queryAll,querySelector:q=>q==='dialog[open]'?[...ids.values()].find(n=>n.tagName==='dialog'&&n.open):null};
   const window={devicePixelRatio:1,addEventListener:(type,fn)=>events[type]=fn};
-  const sandbox={...model,...catalogue,document,window,localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v)},structuredClone,crypto:{randomUUID:()=> 'test-design'},console,Image:class{set src(value){}},ResizeObserver:class{observe(){}},setTimeout:()=>0,clearTimeout:()=>{}};
+  const sandbox={...model,...catalogue,...hull,document,window,localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v)},structuredClone,crypto:{randomUUID:()=> 'test-design'},console,OffscreenCanvas:class{constructor(w,h){this.width=w;this.height=h;}getContext(){return {drawImage(){},getImageData:(x,y,w,h)=>({data:new Uint8ClampedArray(w*h*4)}),putImageData(){}};}},Image:class{set src(value){this.srcValue=value;const data=readFileSync(value);if(value.endsWith('.png')){this.width=data.readUInt32BE(16);this.height=data.readUInt32BE(20);}else{this.width=64;this.height=64;}this.onload?.();}},ResizeObserver:class{observe(){}},setTimeout:()=>0,clearTimeout:()=>{}};
   const source=readFileSync('app.js','utf8').replace(/^import .+;\r?\n/gm,'');
   vm.runInNewContext(source,sandbox,{filename:'app.js'});
   assert.equal(queryAll('.component-item').length,14);

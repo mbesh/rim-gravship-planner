@@ -56,6 +56,7 @@ The tests cover placement rules, field geometry, rotation, replacement, movement
 - `app.js`, `index.html`, `style.css`: editor interface and canvas rendering.
 - `model.js`: ship state, drawing geometry, placement rules, validation, and movement.
 - `components.js`: component catalogue, footprints, rotations, artwork, and exhaust areas.
+- `hull.js`: floor-aware hull corner selection, reference texture cleanup, and quarter-tile rendering.
 - `server.mjs`: local static development server.
 - `assets/`: component artwork and reference images.
 
