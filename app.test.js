@@ -5,9 +5,10 @@ import {readFileSync} from 'node:fs';
 import * as model from './model.js';
 import * as catalogue from './components.js';
 import * as hull from './hull.js';
+import * as measurements from './measurements.js';
 
 function createEditor({deferHullTextures=false}={}){
-  const pendingHullImages=[];
+  const pendingHullImages=[],drawnText=[];
   const frameQueue=[],counters={frames:0,validation:0,fields:0,apply:0,placement:0,previewMove:0,move:0,libraryReads:0,clones:0};
   let frameId=0;
   const flush=()=>{let passes=0;while(frameQueue.length){assert.ok(passes++<10,'rendering should settle');const batch=frameQueue.splice(0);for(const callback of batch)callback(0);}};
@@ -29,12 +30,12 @@ function createEditor({deferHullTextures=false}={}){
   const html=readFileSync('index.html','utf8');
   for(const match of html.matchAll(/<([\w-]+)[^>]*\bid="([^"]+)"[^>]*>/g)){const el=new Element(match[1]);el.id=match[2];ids.set(el.id,el);}
   ids.get('name').value='Integration test';
-  const ctx=new Proxy({clearRect:()=>counters.frames++}, {get:(target,k)=>target[k]||(()=>{}),set:(target,k,v)=>(target[k]=v,true)});
+  const ctx=new Proxy({clearRect:()=>{counters.frames++;drawnText.length=0;},measureText:text=>({width:String(text).length*7}),fillText:(text,x,y)=>drawnText.push({text,x,y})}, {get:(target,k)=>target[k]||(()=>{}),set:(target,k,v)=>(target[k]=v,true)});
   ids.get('canvas').getContext=()=>ctx;
   const queryAll=q=>q==='[data-layer]'?nodes.filter(n=>n.dataset.layer):q==='[data-shape]'?nodes.filter(n=>n.dataset.shape):q==='.component-item'?nodes.filter(n=>n.className.split(' ').includes('component-item')):q==='#component-options h3'?ids.get('component-options').children.filter(n=>n.tagName==='h3'):[];
   const document={getElementById:id=>{assert.ok(ids.has(id),`Missing element ${id}`);return ids.get(id);},createElement:t=>new Element(t),createTextNode:text=>({textContent:text}),querySelectorAll:queryAll,querySelector:q=>q==='dialog[open]'?[...ids.values()].find(n=>n.tagName==='dialog'&&n.open):null};
   const window={devicePixelRatio:1,addEventListener:(type,fn)=>events[type]=fn,requestAnimationFrame:fn=>{frameQueue.push(fn);return ++frameId;}};
-  const sandbox={...model,...catalogue,...hull,document,window,localStorage:{getItem:k=>{if(k==='gravship-designs-v1')counters.libraryReads++;return storage.get(k)||null;},setItem:(k,v)=>storage.set(k,v)},structuredClone:value=>{counters.clones++;return structuredClone(value);},crypto:{randomUUID:()=> 'test-design'},console,OffscreenCanvas:class{constructor(w,h){this.width=w;this.height=h;}getContext(){return {drawImage(){},getImageData:(x,y,w,h)=>({data:new Uint8ClampedArray(w*h*4)}),putImageData(){}};}},Image:class{set src(value){this.srcValue=value;const data=readFileSync(value);if(value.endsWith('.png')){this.width=data.readUInt32BE(16);this.height=data.readUInt32BE(20);}else{this.width=64;this.height=64;}if(deferHullTextures&&value.startsWith('assets/hull-prepared/'))pendingHullImages.push(()=>this.onload?.());else this.onload?.();}},ResizeObserver:class{observe(){}},setTimeout:()=>0,clearTimeout:()=>{}};
+  const sandbox={...model,...catalogue,...hull,...measurements,document,window,localStorage:{getItem:k=>{if(k==='gravship-designs-v1')counters.libraryReads++;return storage.get(k)||null;},setItem:(k,v)=>storage.set(k,v)},structuredClone:value=>{counters.clones++;return structuredClone(value);},crypto:{randomUUID:()=> 'test-design'},console,OffscreenCanvas:class{constructor(w,h){this.width=w;this.height=h;}getContext(){return {drawImage(){},getImageData:(x,y,w,h)=>({data:new Uint8ClampedArray(w*h*4)}),putImageData(){}};}},Image:class{set src(value){this.srcValue=value;const data=readFileSync(value);if(value.endsWith('.png')){this.width=data.readUInt32BE(16);this.height=data.readUInt32BE(20);}else{this.width=64;this.height=64;}if(deferHullTextures&&value.startsWith('assets/hull-prepared/'))pendingHullImages.push(()=>this.onload?.());else this.onload?.();}},ResizeObserver:class{observe(){}},setTimeout:()=>0,clearTimeout:()=>{}};
   for(const [name,fn] of [['topology','hullTopology'],['update','updateHullTopology'],['prepare','prepareHullTexture'],['simple','drawSimpleHull'],['diagonal','drawHull']])sandbox[fn]=trackHull(name,hull[fn]);
   for(const [name,fn] of [['validation','validate'],['fields','fieldCells'],['apply','apply'],['placement','checkPlacement'],['previewMove','previewMove'],['move','moveItem']])sandbox[fn]=(...args)=>{counters[name]++;return model[fn](...args);};
   const MockImage=sandbox.Image;
@@ -42,7 +43,7 @@ function createEditor({deferHullTextures=false}={}){
   const source=readFileSync('app.js','utf8').replace(/^import .+;\r?\n/gm,'');
   vm.runInNewContext(source,sandbox,{filename:'app.js'});
   flush();
-  return {nodes,ids,storage,events,requestedImages,hullCalls,queryAll,flush,counters,pendingFrames:()=>frameQueue.length,finishHullImages:()=>{for(const load of pendingHullImages.splice(0))load();flush();}};
+  return {nodes,ids,storage,events,drawnText,requestedImages,hullCalls,queryAll,flush,counters,pendingFrames:()=>frameQueue.length,finishHullImages:()=>{for(const load of pendingHullImages.splice(0))load();flush();}};
 }
 
 test('editor boots and supports palette, Q/E/buttons, placement, undo/redo and local save',()=>{
@@ -224,4 +225,31 @@ test('solar generator is searchable, fixed at 4x4, and places, moves, saves and 
   const moved=saved();assert.equal(moved.components[0].x,9);assert.equal(moved.components[0].y,5);assert.deepEqual(moved.floor,design.floor);
   ids.get('undo').onclick();flush();assert.equal(saved().components[0].x,4);
   visible[0].onclick();flush();click(7,7,2);assert.equal(saved().components.length,0);assert.equal(saved().floor.length,16);
+});
+
+test('live shape measurements update while dragging and disappear on release or cancellation',()=>{
+  const {ids,nodes,drawnText,flush,counters}=createEditor(),canvas=ids.get('canvas');
+  const pointer=(x,y,button=0)=>({button,pointerId:1,clientX:450+x*22+11,clientY:300+y*22+11,preventDefault(){}});
+  canvas.onpointerdown(pointer(0,0));canvas.onpointerup(pointer(0,0));flush();
+  nodes.find(n=>n.dataset.layer==='floor').onclick();flush();
+  const choose=shape=>{nodes.find(n=>n.dataset.shape===shape).onclick();flush();};
+  const text=()=>drawnText.map(label=>label.text);
+  choose('rect');canvas.onpointerdown(pointer(4,4));canvas.onpointermove(pointer(8,10));flush();
+  assert.deepEqual(text(),['20','5','7']);assert.equal(ids.get('used').textContent,0,'measurement does not place the preview');
+  const validationCalls=counters.validation;canvas.onpointermove(pointer(7,10));flush();
+  assert.deepEqual(text(),['18','7']);assert.equal(counters.validation,validationCalls);
+  canvas.onpointermove(pointer(8,10));canvas.onpointerup(pointer(8,10));flush();
+  assert.deepEqual(text(),[]);assert.equal(ids.get('used').textContent,20);
+  choose('filled');canvas.onpointerdown(pointer(8,10));canvas.onpointermove(pointer(4,4));flush();assert.deepEqual(text(),['35','5','7']);
+  canvas.onpointercancel(pointer(4,4));flush();assert.deepEqual(text(),[]);assert.equal(ids.get('used').textContent,20);
+  choose('disc');canvas.onpointerdown(pointer(4,4));canvas.onpointermove(pointer(6,4));flush();assert.deepEqual(text(),['25','5','5']);
+  canvas.onpointercancel(pointer(6,4));flush();
+  choose('line');canvas.onpointerdown(pointer(4,4));canvas.onpointermove(pointer(10,4));flush();assert.deepEqual(text(),['7']);
+  canvas.onpointercancel(pointer(10,4));flush();
+  choose('diagonal');canvas.onpointerdown(pointer(4,4));canvas.onpointermove(pointer(10,8));flush();assert.deepEqual(text(),['7','7','5']);
+  canvas.onpointercancel(pointer(10,8));flush();assert.deepEqual(text(),[]);
+  choose('single');canvas.onpointerdown(pointer(4,4));canvas.onpointermove(pointer(10,4));flush();assert.deepEqual(text(),[]);
+  canvas.onpointercancel(pointer(10,4));flush();
+  choose('rect');canvas.onpointerdown(pointer(4,4,1));canvas.onpointermove(pointer(8,10,1));flush();assert.deepEqual(text(),[]);
+  canvas.onpointerup(pointer(8,10,1));flush();
 });
