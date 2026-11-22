@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {existsSync} from 'node:fs';
-import {HULL_REFERENCES,hullTopology,hullPixelAlpha,prepareHullTexture,drawHull,drawSimpleHull} from './hull.js';
+import {HULL_REFERENCES,hullTopology,updateHullTopology,hullPixelAlpha,prepareHullTexture,drawHull,drawSimpleHull} from './hull.js';
 const key=(x,y)=>`${x},${y}`;
 function stateFor(rows){const hull=[],floor=[];for(let y=0;y<rows.length;y++)for(let x=0;x<rows[y].length;x++){if(rows[y][x]==='H')hull.push(key(x,y));if(rows[y][x]!=='\u002e')floor.push(key(x,y));}return {hull,floor,components:[],extenders:[],engine:null};}
 function signature(s,x,y){return Array.from({length:25},(_,i)=>{const k=key(x+i%5-2,y+Math.floor(i/5)-2);return s.hull.includes(k)?'H':s.floor.includes(k)?'S':'.';}).join('');}
@@ -229,5 +229,80 @@ test('unpictured 4x4 transitions never invent or remove facing hull neighbors',(
       }
       rows=rotated(rows);
     }
+  }
+});
+
+function assertMatchesFull(layout,s,message=''){
+  const expected=hullTopology(s);
+  assert.deepEqual([...layout.tiles],[...expected.tiles],message);
+  assert.deepEqual([...layout._index.emptyCorners].sort(),[...expected._index.emptyCorners].sort(),message);
+}
+
+test('one-tile hull edits recompute only the local patch of a large design',()=>{
+  const s=stateFor(Array(40).fill('H'.repeat(50))),before=hullTopology(s);
+  const next={...s,hull:s.hull.filter(k=>k!=='25,20')},updated=updateHullTopology(before,next);
+  assert.equal(updated.stats.mode,'incremental');assert.equal(updated.stats.evaluated,49);
+  assert.strictEqual(updated.tiles.get('0,0'),before.tiles.get('0,0'),'distant artwork is reused');
+  assert.notStrictEqual(updated.tiles.get('26,20'),before.tiles.get('26,20'));
+  assert.ok(before.tiles.has('25,20'),'the previous layout is not mutated');
+  assertMatchesFull(updated,next);
+  const undone=updateHullTopology(updated,s);assertMatchesFull(undone,s);
+  assert.equal(undone.stats.mode,'incremental');
+});
+
+test('incremental invalidation includes the third ring affected by empty corner connectivity',()=>{
+  const s=stateFor(['.H..','...H','....','....']),before=hullTopology(s);
+  const next={...s,hull:[...s.hull,'0,1'],floor:[...s.floor,'0,1']},updated=updateHullTopology(before,next);
+  assert.equal(before.tiles.get('3,1').context,updated.tiles.get('3,1').context,'the reference signature itself is unchanged');
+  assert.notStrictEqual(before.tiles.get('3,1'),updated.tiles.get('3,1'),'a corner three tiles away still invalidates this cell');
+  assert.ok(updated._index.emptyCorners.has('1,1'));assertMatchesFull(updated,next);
+});
+
+test('incremental hull handles occupied footprints, barrier rotations, moves and removals',()=>{
+  const base=stateFor(['H.H.H.','.S.S.S','H.H.H.','.S.S.S','H.H.H.']);
+  const states=[
+    {...base,components:[{type:'vac-barrier',x:1,y:1,rotation:0}]},
+    {...base,components:[{type:'vac-barrier',x:1,y:1,rotation:1}]},
+    {...base,components:[{type:'vac-barrier',x:1,y:1,rotation:3}]},
+    {...base,components:[{type:'vac-barrier',x:3,y:1,rotation:0}]},
+    {...base,components:[{type:'heater',x:1,y:1}]},
+    {...base,components:[{type:'solar-generator',x:1,y:1}]},
+    {...base,engine:{x:1,y:1},components:[]},
+    {...base,engine:{x:3,y:2},extenders:[{x:1,y:3}],components:[]},
+    base,
+  ];
+  let layout=hullTopology(base);
+  for(const s of [...states,...states.toReversed()]){layout=updateHullTopology(layout,s);assertMatchesFull(layout,s);}
+});
+
+test('unrelated component rotation reuses all diagonal cells; bulk replacement rebuilds safely',()=>{
+  const s={...stateFor(['H.H.','.H.H','H.H.']),components:[{type:'small-thruster',x:6,y:6,rotation:0}]};
+  const before=hullTopology(s),same={...s,components:[{...s.components[0],rotation:2}]},updated=updateHullTopology(before,same);
+  assert.equal(updated.stats.mode,'unchanged');assert.equal(updated.stats.evaluated,0);assert.strictEqual(updated.tiles,before.tiles);
+  assertMatchesFull(updated,same);
+  const large=stateFor(Array(40).fill('H'.repeat(50))),built=updateHullTopology(updated,large);
+  assert.equal(built.stats.mode,'full');assertMatchesFull(built,large);
+  const cleared=updateHullTopology(built,stateFor(['.']));assert.equal(cleared.tiles.size,0);assert.equal(cleared.stats.mode,'full');
+});
+
+test('incremental hull matches fresh builds across deterministic mixed edits and undo',()=>{
+  let seed=0x71e2a;const random=()=>{seed^=seed<<13;seed^=seed>>>17;seed^=seed<<5;return seed>>>0;};
+  let s=stateFor(Array.from({length:12},()=>Array.from({length:12},()=>['.','S','H'][random()%3]).join(''))),layout=hullTopology(s);
+  const history=[];
+  for(let i=0;i<192;i++){
+    history.push(s);const next=structuredClone(s),x=random()%12,y=random()%12,k=key(x,y);
+    if(i%13===0&&history.length>2)s=history[random()%history.length];
+    else{
+      switch(random()%6){
+        case 0:next.hull=next.hull.includes(k)?next.hull.filter(v=>v!==k):[...next.hull,k];break;
+        case 1:next.floor=next.floor.includes(k)?next.floor.filter(v=>v!==k):[...next.floor,k];break;
+        case 2:next.components=[{type:'vac-barrier',x,y,rotation:random()%4}];break;
+        case 3:next.components=random()%2?[{type:'solar-generator',x,y}]:[];break;
+        case 4:next.engine=random()%2?{x,y}:null;break;
+        case 5:next.extenders=random()%2?[{x,y}]:[];break;
+      }
+      s=next;
+    }
+    layout=updateHullTopology(layout,s);assertMatchesFull(layout,s,'step '+i);
   }
 });

@@ -24,7 +24,7 @@ npm start -- --port 5174
 - Add tanks, thrusters, a pilot console, upgrades, life-support equipment, autodoors, and solar generators. The palette shows footprints and stated component limits, with links to the wiki. Solar generators are fixed 4 × 4 components under Power and need 16 supporting substructure tiles.
 - Watch design checks for missing foundations, disconnected substructure, unsupported tiles, blocked thruster clearance, and invalid pump placement.
 - Save and load named designs in browser local storage. Designs stay on the same browser, device, and origin (including port).
-- Hull uses fast, cardinal-only rendering by default. Under Rendering, enable **Render diagonal in hull (slower performance)** for the detailed diagonal artwork. This view option leaves the design unchanged and starts off on each page load.
+- Hull uses fast, cardinal-only rendering by default. Under Rendering, enable **Render diagonal in hull (slower performance)** for the detailed diagonal artwork. This view option leaves the design unchanged and starts off on each page load. Small edits update nearby diagonal hull cells; the app loads prepared textures without processing screenshot pixels in the browser.
 
 ## Controls
 
@@ -54,14 +54,32 @@ The tests cover placement rules, field geometry, rotation, replacement, movement
 
 Rendering requests are batched into browser frames. Placement and movement previews share read-only validation with committed edits; tool changes reuse design checks and grav fields. Regression tests cover curved/coalesced strokes, final pointer-up positions, cancellation, one-step undo, cached sidebar updates, and saved-design changes from another tab.
 
-The optional [4x4 hull rendering audit](HULL_4X4_AUDIT.md) exercises the actual canvas renderer across 167,139 layouts and records reference candidates. Its native canvas dependency is only needed for that audit.
+The optional [4x4 hull rendering audit](HULL_4X4_AUDIT.md) exercises the actual canvas renderer across 167,139 layouts and records reference candidates. Native canvas is only needed for the optional audit and asset-preparation tools.
+
+## Prepare hull artwork
+
+The checked-in PNGs under `assets/hull-prepared/` are ready for the browser; running
+the app and normal tests needs no image-processing dependency. When hull reference
+images, reference grids, or texture-cleanup rules change, regenerate these assets:
+
+```sh
+npm install --no-save --package-lock=false @napi-rs/canvas
+npm run prepare:hull
+npm run check:hull-textures
+```
+
+Commit the prepared PNGs and their generated manifest with the source changes.
+Normal tests verify their source hashes, reference grids, cleanup recipe, PNG
+dimensions, and output hashes. The optional pixel check above also verifies that
+each prepared image exactly matches a fresh run of the cleanup function.
 
 ## Project files
 
 - `app.js`, `index.html`, `style.css`: editor interface and canvas rendering.
 - `model.js`: ship state, drawing geometry, placement rules, validation, and movement.
 - `components.js`: component catalogue, footprints, rotations, artwork, and exhaust areas.
-- `hull.js`: floor-aware hull corner selection, reference texture cleanup, and quarter-tile rendering.
+- `hull.js`: floor-aware hull corner selection, incremental layout updates, texture-preparation rules, and tile rendering.
+- `tools/prepare-hull-textures.mjs`: development-only generation and pixel verification of prepared hull artwork.
 - `server.mjs`: local static development server.
 - `assets/`: component artwork and reference images.
 

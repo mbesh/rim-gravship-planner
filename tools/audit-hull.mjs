@@ -7,9 +7,9 @@ import path from 'node:path';
 import {writeFile,mkdir} from 'node:fs/promises';
 const root=process.cwd(),require=createRequire(path.join(root,'package.json'));
 const {createCanvas,loadImage}=require('@napi-rs/canvas');
-const {HULL_REFERENCES,hullTopology,prepareHullTexture,drawHull}=await import(pathToFileURL(path.join(root,'hull.js')));
+const {HULL_REFERENCES,hullTopology,drawHull}=await import(pathToFileURL(path.join(root,'hull.js')));
 const out=path.resolve(process.argv[2]||'node_modules/.cache/hull-audit');await mkdir(out,{recursive:true});
-const textures={};for(const ref of HULL_REFERENCES)textures[ref.id]=prepareHullTexture(await loadImage(path.join(root,'assets',ref.file)),ref,createCanvas);
+const textures={};for(const ref of HULL_REFERENCES)textures[ref.id]=await loadImage(path.join(root,'assets',ref.texture));
 const tile=16,pad=1,canvas=createCanvas(6*tile,6*tile),ctx=canvas.getContext('2d');
 const key=(x,y)=>x+','+y;
 function stateFor(rows){const hull=[],floor=[];rows.forEach((row,y)=>[...row].forEach((v,x)=>{if(v==='H')hull.push(key(x,y));if(v!=='.')floor.push(key(x,y));}));return {hull,floor,components:[],extenders:[],engine:null};}

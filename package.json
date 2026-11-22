@@ -1,1 +1,13 @@
-{"name":"rim-gravship-planner","version":"1.0.0","private":true,"type":"module","scripts":{"dev":"node server.mjs","start":"node server.mjs","test":"node --test"}}
+{
+  "name": "rim-gravship-planner",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node server.mjs",
+    "start": "node server.mjs",
+    "test": "node --test",
+    "prepare:hull": "node tools/prepare-hull-textures.mjs",
+    "check:hull-textures": "node tools/prepare-hull-textures.mjs --check"
+  }
+}

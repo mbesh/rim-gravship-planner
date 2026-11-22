@@ -25,7 +25,8 @@ all 34 supplied reference grids.
 | `hull-cross-mixed-floor.png` | `SH. / HHH / .HS` |
 
 The junction's bottom-center tile is empty, as confirmed by the user. Screenshot
-background pixels are filtered at runtime; the supplied images are untouched.
+background pixels are filtered by the development asset-preparation tool; the
+supplied source images are untouched. The app loads the prepared transparent PNGs.
 The checkerboard and mixed junction references confirm that their center hull
 tile stays isolated rather than forming an X-shaped connection. The asymmetry
 in the parallel-diagonal reference is also present in the game image.
@@ -37,6 +38,20 @@ Connected diagonal hull continues to use directional quarter artwork.
 The 90-degree and 270-degree parallel-chain chevrons now use their dedicated
 native references for both the connected hull and the enclosed gap, preserving
 the upright shading and front faces that rotating the side chevron lost.
+
+## Incremental layout updates
+
+Small edits update cells within three tiles of changed hull, floor, occupied
+footprints, or barrier connections. The reference signature reaches two tiles;
+empty-corner connectivity adds one more tile of influence. Unchanged cells keep
+their existing artwork, and edits that do not affect these inputs reuse the
+whole layout. Large replacements use a full rebuild. Candidate ordering matches
+the full renderer so quarter overlap remains consistent.
+
+Regression tests compare incremental and fresh layouts across random mixed edits,
+undo, component footprints, engine moves, and barrier rotations. Prepared texture
+hashes and reference metadata are checked by the normal test suite; the optional
+`npm run check:hull-textures` command compares prepared pixels with fresh cleanup.
 
 ## Rendering rules and regression checks
 
@@ -63,7 +78,8 @@ candidates separately from structural checks.
 The audit rendered the original five reported layouts and 16 additional layouts
 across all four rotations (84 renderings). Contact sheets show the six new
 reference cases in all rotations, plus the broader shape checks. These use the
-actual canvas renderer and runtime texture cleanup.
+actual canvas renderer and the same texture-cleanup rules now used to generate
+the prepared PNGs ahead of time.
 
 Unpictured contexts still use approximate selection. In particular, the
 alternating-floor diagonal and empty Z below lack dedicated game references;
