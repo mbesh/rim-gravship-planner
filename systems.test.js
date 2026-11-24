@@ -2,11 +2,51 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {shipSystems} from './systems.js';
 import {normalizeScenario,DEFAULT_SCENARIO} from './scenario.js';
-import {blank,sanitize,validate} from './model.js';
+import {blank,sanitize,validate,capacity} from './model.js';
 
 const item=(type,x=5,y=5,rotation=0)=>({type,x,y,rotation});
 const design=(components=[],scenario={},modded=false)=>({...blank(),engine:{x:0,y:0},floor:[],components,scenario,...(modded?{mods:{chapter1:true,chapter2:true},engineType:'VGE_GravhulkEngine'}:{})});
 const near=(a,b)=>assert.ok(Math.abs(a-b)<1e-7,`${a} != ${b}`);
+
+test('electricity totals vanilla sources without counting generator fuel as flight storage',()=>{
+  const s=design(['wood-fired-generator','chemfuel-generator','wind-turbine','geothermal-generator','watermill-generator','vanometric-power-cell','power-cell','solar-generator'].map((type,i)=>item(type,i*9,5)));
+  const r=shipSystems(s);assert.equal(r.electricity.totalWatts,12900);assert.equal(r.electricity.engineWatts,0);
+  assert.equal(r.electricity.steadyWatts,8900);assert.equal(r.electricity.solarWatts,1700);assert.equal(r.electricity.windWatts,2300);
+  assert.equal(r.flight.fuelCapacity,0);assert.equal(r.flight.generatorFuelPerDay,0);
+  s.engine=null;assert.equal(shipSystems(s).electricity.totalWatts,12900);
+});
+
+test('mod engine generation follows engine size, connected substructure and expanded capacity',()=>{
+  const s=design([],{},true);s.engineType='standard';
+  for(let y=-4;y<=4;y++)for(let x=-6;x<=6;x++)s.floor.push(`${x},${y}`);
+  for(let x=-3;x<=4;x++)s.floor.push(`${x},5`);
+  assert.equal(s.floor.length,125);assert.equal(shipSystems(s).electricity.engineWatts,2400);
+  s.floor.push('99,99');assert.equal(shipSystems(s).electricity.connectedTiles,125);assert.equal(shipSystems(s).electricity.engineWatts,2400);
+  s.extenders=[{x:6,y:0}];near(shipSystems(s).electricity.engineWatts,4800*(1-125/capacity(s)));
+  for(const [type,base] of [['standard',4800],['VGE_GravjumperEngine',2400],['VGE_GravhulkEngine',7200]]){
+    s.engineType=type;s.floor=[];s.extenders=[];assert.equal(shipSystems(s).electricity.engineWatts,base);
+  }
+  s.engineType='VGE_GravjumperEngine';s.floor=[];for(let y=-5;y<=5;y++)for(let x=-5;x<=5;x++)s.floor.push(`${x},${y}`);
+  assert.equal(shipSystems(s).electricity.engineWatts,0,'over-capacity layouts never generate negative power');
+  s.engine=null;assert.equal(shipSystems(s).electricity.engineWatts,0);
+});
+
+test('mod electricity applies adjacency and excludes disabled chapters and emergency output',()=>{
+  const s=design([item('power-cell',5,5),item('power-cell',6,6),item('VGE_GravshipCapacitor',10,10)],{},true);
+  let p=shipSystems(s).electricity;assert.equal(p.steadyWatts,2300);assert.equal(p.adjacencyWatts,300);
+  s.components[1].x=7;p=shipSystems(s).electricity;assert.equal(p.steadyWatts,2000);assert.equal(p.adjacencyWatts,0);
+  s.components=[item('VGE_GravcorePowerCoil',5,5),item('power-cell',8,6),item('VGE_AstrofuelGenerator',-8,5),item('VGE_IndustrialAstrofuelGenerator',-12,5),item('VGE_EmergencyGenerator',15,5),item('VGE_SolarPanelling',20,5)];
+  p=shipSystems(s).electricity;assert.equal(p.steadyWatts,12300);assert.equal(p.adjacencyWatts,900);assert.equal(p.solarWatts,200);assert.equal(p.emergencyGenerators,1);assert.equal(p.totalWatts,19700);
+  s.mods={};p=shipSystems(s).electricity;assert.equal(p.totalWatts,1200);assert.equal(p.emergencyGenerators,0);
+});
+
+test('heatsink electricity uses the stored heat and research assumptions',()=>{
+  const s=design([item('VGE_SmallHeatsink'),item('VGE_LargeHeatsink',10,5)],{},true);
+  assert.equal(shipSystems(s).electricity.heatWatts,0);
+  s.scenario.heatPercent=50;assert.equal(shipSystems(s).electricity.heatWatts,150);
+  s.scenario.heatResearch=true;assert.equal(shipSystems(s).electricity.heatWatts,300);
+  s.scenario.heatPercent=0;assert.equal(shipSystems(s).electricity.heatWatts,0);
+});
 
 test('vanilla range is capped by thrust and fuel, including optimizer savings and launch minimums',()=>{
   const full=design([

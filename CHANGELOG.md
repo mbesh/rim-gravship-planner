@@ -1,5 +1,14 @@
 # Release notes
 
+## 1.0.7 — 2026-11-24
+
+- Add wood-fired and chemfuel generators, wind turbines, geothermal generators, watermills, and vanometric power cells to Power, using wiki footprints and original artwork. Keep the ship reactor excluded.
+- Move the mod gravship capacitor into Power.
+- Show estimated electricity generation and a source breakdown in Ship systems, including mod engines' output after connected substructure load, gravcore adjacency bonuses, and heatsink generation from the stored-heat assumption.
+- Label full-sun solar and normal-wind estimates. Show generation before consumption and exclude demand-driven emergency generators from the total.
+- Import numeric mod power data and document operating assumptions and artwork provenance. Preserve placement, rotation, Undo/Redo, and local save/load.
+- Validate with 131 automated tests and desktop/mobile browser checks. Physical-device Safari testing and more thorough in-game verification of Vanilla Gravship Expanded support remain outstanding.
+
 ## 1.0.6 — 2026-11-24
 
 - Show Platform immediately after Structure in the mod component palette.

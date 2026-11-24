@@ -54,7 +54,7 @@ function createEditor({deferHullTextures=false}={}){
 test('editor boots and supports palette, Q/E/buttons, placement, undo/redo and local save',()=>{
   const {nodes,ids,storage,events,requestedImages,hullCalls,queryAll,flush}=createEditor();
   const action=fn=>{fn();flush();};
-  assert.equal(queryAll('.component-item').filter(n=>!n.hidden).length,15);
+  assert.equal(queryAll('.component-item').filter(n=>!n.hidden).length,21);
   assert.equal(ids.get('app-version').textContent,`v${release.APP_VERSION}`);
   assert.equal(ids.get('diagonal-hull').checked,true);
   assert.equal(hullCalls.topology,1);assert.equal(hullCalls.prepare,0);assert.ok(hullCalls.diagonal>0);
@@ -132,17 +132,17 @@ test('mod toggles enforce dependencies, update engine/rotation UI, preserve desi
   const saved=()=>{action(()=>ids.get('save').onclick());return JSON.parse(storage.get('gravship-designs-v1'))[0].state;};
   assert.equal(ids.get('mod-chapter1').checked,false);assert.equal(ids.get('mod-chapter2').checked,false);
   assert.equal(requestedImages.some(p=>p.startsWith('assets/mods/')),false,'disabled mods do not load component artwork');
-  toggle('mod-chapter1',true);assert.equal(queryAll('.component-item').filter(n=>!n.hidden).length,92);
+  toggle('mod-chapter1',true);assert.equal(queryAll('.component-item').filter(n=>!n.hidden).length,98);
   assert.equal(ids.get('engine-type').children.length,3);assert.equal(ids.get('capacity-note').textContent,'Place an engine to support 250 tiles.');
   assert.equal(nodes.find(n=>n.dataset.layer==='small-tank').querySelector('strong').textContent,'Small astrofuel tank');
   assert.equal(requestedImages.some(p=>p.startsWith('assets/mods/chapter2/')),false);
-  toggle('mod-chapter2',true);assert.equal(ids.get('mod-chapter1').checked,true);assert.equal(queryAll('.component-item').filter(n=>!n.hidden).length,124);
+  toggle('mod-chapter2',true);assert.equal(ids.get('mod-chapter1').checked,true);assert.equal(queryAll('.component-item').filter(n=>!n.hidden).length,130);
   action(()=>{ids.get('engine-type').value='VGE_GravhulkEngine';ids.get('engine-type').onchange();});click(0,0);
   assert.equal(ids.get('capacity').textContent,'500');assert.equal(ids.get('engine-radius').textContent,23.9);assert.equal(ids.get('extender-count').textContent,'0 / 10');
   select('fuel-optimizer');assert.equal(ids.get('rotate').disabled,false);
   action(()=>events.keydown({key:'e',target:ids.get('canvas'),preventDefault(){}}));assert.equal(ids.get('rotation-label').textContent,'West');click(5,5);
   select('VGE_Warcomputer');click(8,5);const before=saved();assert.equal(before.components.length,2);assert.equal(before.components[0].rotation,1);
-  toggle('mod-chapter1',false);assert.equal(ids.get('mod-chapter2').checked,false);assert.equal(queryAll('.component-item').filter(n=>!n.hidden).length,15);
+  toggle('mod-chapter1',false);assert.equal(ids.get('mod-chapter2').checked,false);assert.equal(queryAll('.component-item').filter(n=>!n.hidden).length,21);
   assert.equal(saved().components.length,2,'disabling mods preserves placed components');
   action(()=>ids.get('undo').onclick());assert.equal(ids.get('mod-chapter2').checked,true);assert.equal(ids.get('engine-type').value,'VGE_GravhulkEngine');
   saved();action(()=>ids.get('new').onclick());action(()=>ids.get('accept-confirm').onclick());
@@ -173,8 +173,10 @@ test('ship systems update for layout and assumptions, persist through save/load,
   const input=(field,value)=>action(()=>{const el=ids.get(`scenario-${field}`);if(typeof value==='boolean')el.checked=value;else el.value=String(value);el.onchange();});
   const rows=id=>Object.fromEntries(ids.get(id).children.map(r=>r.children.map(c=>c.textContent)));
   assert.equal(ids.get('scenario-crew').disabled,true);assert.equal(ids.get('systems-range').textContent,'0 tiles');
+  assert.equal(ids.get('systems-electricity-total').textContent,'0 W');
   action(()=>{ids.get('mod-chapter1').checked=true;ids.get('mod-chapter1').onchange();});
   action(()=>{ids.get('engine-type').value='VGE_GravhulkEngine';ids.get('engine-type').onchange();});click(0,0);
+  assert.equal(rows('systems-electricity')['Grav engine'],'7,200 W');
   select('small-tank');click(5,5);select('small-thruster');click(8,5);
   assert.equal(ids.get('systems-range').textContent,'6 tiles');assert.equal(rows('systems-flight').Astrofuel,'250 / 250');
   input('fuelPercent',10);assert.equal(ids.get('systems-range').textContent,'5 tiles');
@@ -186,11 +188,13 @@ test('ship systems update for layout and assumptions, persist through save/load,
   select('VGE_SmallHeatsink');click(12,5);assert.equal(rows('systems-heat')['Sink capacity'],'20 HU');
   input('heatPercent',100);assert.equal(rows('systems-heat')['Excess into rooms'],'5 HU');
   input('heatResearch',true);assert.equal(rows('systems-heat')['Sink capacity'],'40 HU');
+  assert.equal(ids.get('systems-electricity-total').textContent,'7,300 W');assert.equal(rows('systems-electricity')['From stored heat'],'100 W');
   const changes=ids.get('systems-flight').replacements;ids.get('canvas').onpointermove(pointer(10,-5));flush();
   assert.equal(ids.get('systems-flight').replacements,changes,'hover does not rebuild system rows');
   action(()=>ids.get('save').onclick());const saved=JSON.parse(storage.get('gravship-designs-v1'))[0].state;
   assert.equal(saved.scenario.crew,8);assert.equal(saved.scenario.fuelPercent,10);assert.equal(saved.scenario.oxygenPercent,50);assert.equal(saved.scenario.cabinTiles,100);
   action(()=>ids.get('undo').onclick());assert.equal(ids.get('scenario-heatResearch').checked,false);assert.equal(rows('systems-heat')['Sink capacity'],'20 HU');
+  assert.equal(ids.get('systems-electricity-total').textContent,'7,250 W');
   action(()=>ids.get('redo').onclick());assert.equal(ids.get('scenario-heatResearch').checked,true);
   action(()=>ids.get('save').onclick());action(()=>ids.get('new').onclick());action(()=>ids.get('accept-confirm').onclick());
   assert.equal(ids.get('scenario-crew').value,'8','New preserves planning assumptions');assert.equal(ids.get('systems-range').textContent,'0 tiles');

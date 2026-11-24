@@ -86,6 +86,23 @@ def system_properties(element):
     result = {}
     for comp in element.iter('li'):
         kind = comp.get('Class','')
+        power_class = text(comp, 'compClass') or kind
+        if comp.find('basePowerConsumption') is not None:
+            watts = -float(text(comp, 'basePowerConsumption'))
+            if watts > 0:
+                result['powerWatts'] = watts
+                if 'Solar' in power_class:
+                    result['powerKind'] = 'solar'
+                elif 'GravEngine' in power_class:
+                    result['powerKind'] = 'engine'
+                elif 'GravcoreAdjacency' in power_class:
+                    result['powerKind'] = 'gravcore'
+                elif 'Emergency' in power_class:
+                    result['powerKind'] = 'emergency'
+        if kind.endswith('CompProperties_Heatsink'):
+            result['heatPowerWatts'] = float(text(comp, 'powerGenerated', '0'))
+        if comp.find('powerUpgrades') is not None:
+            result['powerUpgrades'] = [{'research':text(u,'researchProject'),'factor':float(text(u,'factor','1'))} for u in comp.findall('powerUpgrades/li')]
         network = text(comp,'pipeNet')
         if kind.endswith('CompProperties_ResourceStorage'):
             if network == 'VGE_OxygenNet':

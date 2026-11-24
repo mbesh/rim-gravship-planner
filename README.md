@@ -26,6 +26,7 @@ The build palette floats over the upper-left grid corner; click its heading to c
 - Place up to six grav field extenders. The planner uses the stepped engine and extender field layouts supplied in the reference screenshots.
 - Selecting the placed engine or choosing its build tool highlights the original engine field boundary, even when the grav field view is hidden.
 - Add tanks, thrusters, a pilot console, upgrades, life-support equipment, autodoors, and solar generators. The palette shows footprints and stated component limits, with links to the wiki. Solar generators are fixed 4 × 4 components under Power and need 16 supporting substructure tiles.
+- Power also includes wood-fired and chemfuel generators, wind turbines, geothermal generators, watermills, and vanometric power cells. Their wiki footprints and operating requirements appear in the palette; terrain and wind clearance are not simulated. With mods enabled, gravship capacitors appear in Power.
 - Watch design checks for missing foundations, disconnected substructure, unsupported tiles, blocked thruster clearance, and invalid pump placement.
 - Plan tiles and components outside the grav field: these placements are allowed and marked red while validation highlights are enabled. Field warnings also apply when moving or rotating components. Unlinked extenders and inactive mod field generators do not expand the supported area or capacity; collision, mounting, component limits, and substructure capacity rules still apply.
 - Place structures before laying their substructure, including on subscaffold. Missing foundation tiles are marked red until you add substructure underneath. Placement, movement, and rotation remain available; oxygen pumps still need a hull mount.
@@ -42,7 +43,7 @@ Both astrofuel pipe types support click-and-drag painting and every drawing shap
 
 ## Ship systems
 
-The inspector shows fuel storage, refining and consumption, range from fuel and thrusters, oxygen production and crew reserves, and heatsink capacity, jump heat and cooling. Open **Planning assumptions** to set crew, cabin volume, jump distance, fill levels, electric charge, vacuum and Heat Dissipation research. These values are saved with the design. See [formulas and assumptions](SYSTEMS.md).
+The inspector shows estimated electricity generation (including mod engine output), fuel storage, refining and consumption, range from fuel and thrusters, oxygen production and crew reserves, and heatsink capacity, jump heat and cooling. Open **Planning assumptions** to set crew, cabin volume, jump distance, fill levels, electric charge, vacuum and Heat Dissipation research. These values are saved with the design. See [formulas and assumptions](SYSTEMS.md).
 
 ## Controls
 
@@ -115,6 +116,6 @@ The header displays the release version from `package.json`, starting with **1.0
 
 ## Artwork and references
 
-Unofficial fan project; not affiliated with Ludeon Studios. RimWorld artwork remains the property of its respective owners. Component images were supplied from the [RimWorld Wiki](https://rimworldwiki.com/wiki/Gravship). The cleaned east-facing vac barrier was derived from an in-game screenshot with AI-assisted background removal. The oxygen pump uses a custom schematic marker.
+Unofficial fan project; not affiliated with Ludeon Studios. RimWorld artwork remains the property of its respective owners. Component images come from the [RimWorld Wiki](https://rimworldwiki.com/wiki/Gravship); the additional base-game power artwork has [source URLs and hashes](assets/power-sources.json). The cleaned east-facing vac barrier was derived from an in-game screenshot with AI-assisted background removal. The oxygen pump uses a custom schematic marker.
 
 Vanilla Gravship Expanded artwork and data are credited to the Vanilla Expanded team. See [mod artwork attribution](assets/mods/NOTICE.md) for sources and licensing.

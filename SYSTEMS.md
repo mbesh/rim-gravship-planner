@@ -15,6 +15,31 @@ clearance is known from the layout. Foundation, connectivity and other build
 checks still need to pass; estimates do not inspect actual pipe flow, individual
 rooms, roofs, valves, inventory or the world map.
 
+## Electricity
+
+**Estimated generation** adds steady generators, full-sun solar output, normal-wind
+output, the selected mod engine's remaining output, and active heatsink generation.
+It is generation before consumption, rather than a net power balance or a daily
+average. Fuel, suitable river/geyser terrain and working connections are assumed;
+roofs, weather and wind clearance are not simulated. Wind turbines use 2,300 W at
+normal wind speed; solar generators use 1,700 W at full sunlight.
+
+The vanilla engine generates no electricity. Chapter 1/2 gravjumper, gravship and
+gravhulk engines start at 2,400, 4,800 and 7,200 W. Their output follows the mod's
+[`CompPowerPlantGravEngine`](https://github.com/Vanilla-Expanded/VanillaGravshipExpanded/blob/7212a0c11bc392079d1f8ac9395d6434aa29b8af/Source/Comps/CompPowerPlantGravEngine.cs):
+`base output × max(0, 1 − connected substructure / supported capacity)`.
+Disconnected substructure and subscaffold do not consume that power budget.
+
+Mod gravcore cells and coils receive +15% per adjacent linked cell/coil, including
+corner adjacency, capped at +120%. The bonus is included in steady generation.
+Heatsinks contribute while **Stored heat (%)** is above zero; Heat Dissipation
+research doubles their output. This is an initial-output estimate; it falls when
+stored heat runs out. Emergency generators follow demand and are excluded from
+the total, with a note when one is placed. Batteries and capacitors store energy
+and contribute no generation. Disabled chapters and components beyond their
+limits are excluded, as for the other system estimates. Numeric mod power data
+is imported from the same XML definitions used by the component catalog.
+
 ## Fuel and range
 
 Vanilla small/large thrusters provide 10/16 tiles each, capped at four/six. Tanks
