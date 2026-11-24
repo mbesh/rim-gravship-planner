@@ -1,5 +1,12 @@
 # Release notes
 
+## 1.0.6 — 2026-11-24
+
+- Show Platform immediately after Structure in the mod component palette.
+- Group the pilot console under Platform and small/large astrofuel tanks under Fuel network when mods are enabled. Restore their vanilla Flight grouping when mods are disabled.
+- Preserve component search, category visibility, and grouping through mod changes and Undo/Redo.
+- Validate with 127 automated tests and desktop/mobile browser checks for both mod chapters, search, and vanilla restoration. More thorough in-game verification of Vanilla Gravship Expanded support remains outstanding.
+
 ## 1.0.5 — 2026-11-24
 
 - Paint normal and hidden astrofuel pipes with continuous strokes and every drawing shape on desktop and mobile. Connect both pipe types through cardinal neighbors, without diagonal joins; show hidden pipes with faint linked artwork.
