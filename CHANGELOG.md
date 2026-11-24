@@ -1,5 +1,13 @@
 # Release notes
 
+## 1.0.5 — 2026-11-24
+
+- Paint normal and hidden astrofuel pipes with continuous strokes and every drawing shape on desktop and mobile. Connect both pipe types through cardinal neighbors, without diagonal joins; show hidden pipes with faint linked artwork.
+- Preserve existing fuel pipes and valves when painting across them. Erase only the selected pipe type, undo whole strokes, and enforce the saved-design component limit during placement.
+- Cache network tile lookup for connected rendering of long pipe runs.
+- Highlight the original engine field boundary when selecting a placed engine or choosing its build tool, including when the general field view is hidden.
+- Validate with 127 automated tests and desktop/mobile browser checks for pipe drawing, mixed connections, erase, Undo/Redo, save/load, and engine field selection. Physical-device Safari testing and more thorough in-game verification of Vanilla Gravship Expanded support remain outstanding.
+
 ## 1.0.4 — 2026-11-24
 
 - Allow planning tiles and components outside the grav field, including moves and rotations. Mark unsupported placements red while Validation highlights is enabled.

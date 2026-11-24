@@ -157,3 +157,19 @@ test('mod thrusters clear the nozzle side of their own artwork in all directions
   }
   assert.notDeepEqual(exhaustCells({type:'small-thruster',x:5,y:5,rotation:0},s),exhaustCells({type:'small-thruster',x:5,y:5,rotation:0}), 'vanilla convention remains unchanged');
 });
+
+
+test('painting astrofuel pipes preserves mixed fuel-network tiles and movement cannot merge them',()=>{
+  let s=design('VGE_GravhulkEngine');s=put(s,'VGE_AstrofuelPipe','5,5');s=put(s,'VGE_HiddenAstrofuelPipe','6,5');s=put(s,'VGE_AstrofuelValve','7,5');
+  const painted=apply(s,'VGE_HiddenAstrofuelPipe',['5,5','6,5','7,5','8,5']);assert.equal(painted.rejected,0);assert.equal(painted.state.components.length,4);
+  assert.deepEqual(painted.state.components.slice(0,3),s.components,'existing pipe styles and valves are retained');
+  const moved=moveItem(painted.state,{kind:'component',index:3},{x:6,y:5});assert.equal(moved.rejected,1);assert.equal(moved.state,painted.state,'invalid moves cannot drop the source or another component');
+  assert.deepEqual(sanitize(JSON.parse(JSON.stringify(painted.state))),painted.state);
+});
+
+test('bulk pipe painting respects the saved-design component limit but permits repainting existing tiles',()=>{
+  const s={...design('VGE_GravhulkEngine'),components:Array.from({length:2000},(_,i)=>({type:'VGE_AstrofuelPipe',x:i%100-50,y:Math.floor(i/100)-10,rotation:0}))};
+  const full=apply(s,'VGE_HiddenAstrofuelPipe',['50,50']);assert.equal(full.rejected,1);assert.match(full.message,/2,000/);assert.equal(full.state.components.length,2000);
+  const repaint=apply(s,'VGE_HiddenAstrofuelPipe',['-50,-10']);assert.equal(repaint.rejected,0);assert.deepEqual(repaint.state.components,s.components);
+  assert.equal(sanitize(JSON.parse(JSON.stringify(repaint.state))).components.length,2000);
+});

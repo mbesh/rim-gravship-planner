@@ -63,6 +63,11 @@ allows four standard shield generators and one signal jammer.
 
 - Oxygen and astrofuel pipes/valves occupy independent network layers. Both can
   share a tile with each other, hull or equipment. Pipes use connected artwork.
+- Normal and hidden astrofuel pipes can be painted with continuous strokes or
+  drawing shapes. They share cardinal connections, with no diagonal joins.
+  Hidden pipes use the regular linked atlas at reduced opacity in the planner.
+  Painting preserves existing fuel pipes and valves; Erase affects only the
+  selected pipe type. A whole stroke is one undo step.
 - Subscaffold connects floor areas and uses no substructure capacity. It cannot
   support buildings and can be replaced by regular substructure. It remains
   subject to the supported field boundary.

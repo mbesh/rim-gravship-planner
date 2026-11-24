@@ -24,6 +24,7 @@ The build palette floats over the upper-left grid corner; click its heading to c
 - Draw individual tiles, straight or diagonal lines, outlined or filled rectangles, and outlined or filled circles.
 - While dragging a line, circle, or rectangle, a center badge shows the preview's tile count. Width and height appear along the top and left when that dimension is greater than four tiles. Straight lines show their count once; outlines and filled shapes count their actual preview tiles.
 - Place up to six grav field extenders. The planner uses the stepped engine and extender field layouts supplied in the reference screenshots.
+- Selecting the placed engine or choosing its build tool highlights the original engine field boundary, even when the grav field view is hidden.
 - Add tanks, thrusters, a pilot console, upgrades, life-support equipment, autodoors, and solar generators. The palette shows footprints and stated component limits, with links to the wiki. Solar generators are fixed 4 × 4 components under Power and need 16 supporting substructure tiles.
 - Watch design checks for missing foundations, disconnected substructure, unsupported tiles, blocked thruster clearance, and invalid pump placement.
 - Plan tiles and components outside the grav field: these placements are allowed and marked red while validation highlights are enabled. Field warnings also apply when moving or rotating components. Unlinked extenders and inactive mod field generators do not expand the supported area or capacity; collision, mounting, component limits, and substructure capacity rules still apply.
@@ -36,6 +37,8 @@ The build palette floats over the upper-left grid corner; click its heading to c
 Enable **Vanilla Gravship Expanded — Chapter 1** or **Chapter 2** under **Build palette → Ship settings**. Chapter 2 enables Chapter 1 automatically. Select a gravjumper, gravship, or gravhulk engine; the planner applies the corresponding footprint, field and capacity rules. Mod settings are saved with each design.
 
 The mods add 109 placeable components, two engine variants, and subscaffold, using original mod artwork. See [mod rules and source notes](MOD_SUPPORT.md) and the [complete component catalog](MOD_CATALOG.md).
+
+Both astrofuel pipe types support click-and-drag painting and every drawing shape, including on mobile. Normal and hidden pipes connect to each other through tile edges; diagonal neighbors do not connect. Hidden pipes use faint linked artwork. Painting across existing fuel-network tiles preserves them; Erase removes only the selected pipe type. Each stroke can be undone as one action.
 
 ## Ship systems
 

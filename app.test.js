@@ -489,3 +489,41 @@ test('missing substructure renders red and disappears from the footprint after f
   ids.get('undo').onclick();flush();assert.ok(drawnRects.some(r=>r.color==='#e35b5b66'),'Undo restores the missing-support warning');
   ids.get('redo').onclick();flush();assert.ok(!drawnRects.some(r=>r.color==='#e35b5b66'));
 });
+
+
+test('astrofuel pipe tools paint continuous runs and shapes, skip existing networks, and undo or erase a whole stroke',()=>{
+  const {ids,nodes,storage,drawnText,flush}=createEditor(),canvas=ids.get('canvas');
+  ids.get('mod-chapter1').checked=true;ids.get('mod-chapter1').onchange();flush();
+  const pointer=(x,y)=>({button:0,pointerId:1,clientX:450+x*22+11,clientY:300+y*22+11,preventDefault(){}});
+  const click=(x,y)=>{canvas.onpointerdown(pointer(x,y));canvas.onpointerup(pointer(x,y));flush();};
+  const choose=type=>{nodes.find(n=>n.dataset.layer===type).onclick();flush();};
+  const shape=type=>{nodes.find(n=>n.dataset.shape===type).onclick();flush();};
+  const stroke=(a,b)=>{canvas.onpointerdown(pointer(...a));canvas.onpointermove(pointer(...b));canvas.onpointerup(pointer(...b));flush();};
+  const saved=()=>{ids.get('save').onclick();flush();return JSON.parse(storage.get('gravship-designs-v1'))[0].state;};
+  click(0,0);choose('VGE_AstrofuelPipe');assert.equal(ids.get('shape-picker').disabled,false);assert.equal(ids.get('rotation-controls').hidden,true);
+  assert.ok(nodes.filter(n=>n.dataset.shape).every(n=>!n.disabled));
+  stroke([4,4],[10,4]);assert.equal(saved().components.length,7);
+  ids.get('undo').onclick();flush();assert.equal(saved().components.length,0);ids.get('redo').onclick();flush();assert.equal(saved().components.length,7);
+  stroke([8,4],[12,4]);assert.equal(saved().components.length,9,'revisiting pipes creates no duplicates');
+  choose('VGE_HiddenAstrofuelPipe');shape('filled');
+  canvas.onpointerdown(pointer(8,4));canvas.onpointermove(pointer(10,6));flush();assert.ok(drawnText.some(t=>t.text==='9'),'pipe shapes show tile measurements');
+  canvas.onpointerup(pointer(10,6));flush();let design=saved();assert.equal(design.components.length,15);assert.equal(design.components.filter(c=>c.type==='VGE_HiddenAstrofuelPipe').length,6);
+  assert.equal(design.components.find(c=>c.x===8&&c.y===4).type,'VGE_AstrofuelPipe','painting preserves an existing pipe variant');
+  ids.get('undo').onclick();flush();assert.equal(saved().components.length,9);ids.get('redo').onclick();flush();assert.equal(saved().components.length,15);
+  ids.get('erase').onclick();stroke([8,4],[10,6]);assert.equal(saved().components.length,9,'shaped erase removes only the selected pipe type');
+  ids.get('add').onclick();choose('heater');assert.equal(ids.get('shape-picker').disabled,true,'ordinary buildings remain single-placement tools');
+});
+
+test('normal and hidden astrofuel sprites share cardinal links and never connect diagonally',()=>{
+  const {ids,nodes,drawnImages,requestedImages,flush}=createEditor(),canvas=ids.get('canvas');
+  ids.get('mod-chapter1').checked=true;ids.get('mod-chapter1').onchange();flush();
+  const click=(x,y)=>{const e={button:0,pointerId:1,clientX:450+x*22+11,clientY:300+y*22+11,preventDefault(){}};canvas.onpointerdown(e);canvas.onpointerup(e);flush();};
+  const choose=type=>{nodes.find(n=>n.dataset.layer===type).onclick();flush();};
+  click(0,0);choose('VGE_AstrofuelPipe');click(6,6);click(5,5);click(10,10);
+  choose('VGE_HiddenAstrofuelPipe');const imageCount=requestedImages.length;click(7,6);click(6,5);click(11,11);
+  const path='assets/'+catalogue.componentDefinition('VGE_AstrofuelPipe').sprites.south,png=readFileSync(path),tw=png.readUInt32BE(16)/4,th=png.readUInt32BE(20)/4;
+  const crops=drawnImages.filter(im=>im.file===path).map(im=>im.args.slice(0,4));
+  for(const crop of [[tw*3,th*3,tw,th],[0,th,tw,th],[0,0,tw,th]])assert.ok(crops.some(c=>JSON.stringify(c)===JSON.stringify(crop)),JSON.stringify(crop));
+  assert.equal(crops.filter(c=>JSON.stringify(c)===JSON.stringify([0,th*3,tw,th])).length,2,'a diagonal-only pair uses two disconnected sprites');
+  assert.equal(requestedImages.length,imageCount,'both variants reuse the loaded atlas');
+});
