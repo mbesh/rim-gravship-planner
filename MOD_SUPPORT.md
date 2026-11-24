@@ -23,6 +23,8 @@ Conditional Biotech/Ideology furniture is labeled with its required DLC.
 Chapter 2 uses Chapter 1's engine rules. Only one engine can be placed. Engine
 selection changes its actual placement, selection, moving and support footprint.
 All footprints still require manually placed substructure.
+You can plan structures before adding it, including on subscaffold; missing
+foundation tiles are marked red until regular substructure is placed underneath.
 
 | Field equipment | Radius | Capacity offset | Maximum | Placement |
 | --- | --- | --- | --- | --- |

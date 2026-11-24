@@ -65,7 +65,7 @@ test('collisions are checked across full rotated footprints and all structure ty
   for(const [layer,k] of [['small-tank','5,5'],['hull','5,5'],['extender','5,5']])assert.equal(apply(s,layer,[k]).rejected,1);
   assert.equal(apply(s,'engine',['5,5']).rejected,1);
   assert.equal(apply(engine(),'small-tank',['0,0']).rejected,1);
-  assert.equal(apply(engine(),'large-tank',['18,0']).rejected,1);
+  const outside=apply(engine(),'large-tank',['18,0']);assert.equal(outside.rejected,0);assert.equal(validate(outside.state).outsideComponents.length,1);
   s=apply(s,'hull',['10,0']).state;assert.equal(apply(s,'small-thruster',['10,0']).rejected,1);
 });
 test('wall-mounted oxygen pumps share hull and flag wall removal',()=>{
@@ -80,10 +80,9 @@ test('thruster obstruction is reported after floor changes and rotates with the 
   assert.deepEqual(validate(s).blockedExhaust,['7,5']);
   s=apply(s,'floor',['7,5'],true).state;assert.equal(validate(s).blockedExhaust.length,0);
 });
-test('shield generators must have their center inside the engine field',()=>{
+test('shield generators can be planned outside the engine field but are flagged',()=>{
   const s=apply(engine(),'extender',['18,0']).state;
-  assert.equal(apply(s,'shield-generator',['25,0']).rejected,1);
-  assert.equal(apply(s,'shield-generator',['18,0']).rejected,1);
+  for(const k of ['25,0','18,4']){const placed=apply(s,'shield-generator',[k]);assert.equal(placed.rejected,0);assert.equal(validate(placed.state).outsideComponents.length,1);}
   assert.equal(apply(s,'shield-generator',['15,3']).rejected,0);
 });
 test('component orientation survives saves and old designs load with an empty component list',()=>{
@@ -179,7 +178,7 @@ test('moving components preserves orientation, limits, floor and original state 
   const item=hitItem(s,{x:6.5,y:5.5});assert.deepEqual(item,{kind:'component',index:0});
   const moved=moveItem(s,item,{x:8,y:6});assert.equal(moved.rejected,0);assert.equal(moved.state.components.length,1);
   assert.deepEqual(moved.state.components[0],{type:'small-thruster',x:8,y:6,rotation:3});assert.deepEqual(moved.state.floor,s.floor);assert.deepEqual(s,original);
-  for(const target of [{x:0,y:0},{x:19,y:0},{x:200,y:0}]){const failed=moveItem(s,item,target);assert.equal(failed.rejected,1);assert.strictEqual(failed.state,s);}
+  for(const target of [{x:0,y:0},{x:200,y:0}]){const failed=moveItem(s,item,target);assert.equal(failed.rejected,1);assert.strictEqual(failed.state,s);}
   let max=engine();for(const k of ['5,5','8,5','11,5','14,5'])max=apply(max,'small-thruster',[k]).state;
   assert.equal(moveItem(max,{kind:'component',index:0},{x:5,y:8}).rejected,0);
 });
@@ -187,7 +186,7 @@ test('moving engine/extenders preserves the other equipment; pumps retain mount 
   let s=apply(engine(),'extender',['10,0']).state;
   let moved=moveItem(s,{kind:'engine'},{x:2,y:0});assert.equal(moved.rejected,0);assert.equal(moved.state.extenders.length,1);
   moved=moveItem(s,{kind:'extender',index:0},{x:12,y:0});assert.equal(moved.rejected,0);assert.deepEqual(moved.state.engine,s.engine);
-  assert.equal(moveItem(s,{kind:'extender',index:0},{x:25,y:0}).rejected,1);
+  const unsupported=moveItem(s,{kind:'extender',index:0},{x:25,y:0});assert.equal(unsupported.rejected,0);assert.equal(validate(unsupported.state).invalidExtenders.length,1);
   s=apply(apply(engine(),'hull',['5,5','8,5']).state,'oxygen-pump',['5,5'],false,2).state;
   assert.equal(moveItem(s,{kind:'component',index:0},{x:8,y:5}).rejected,0);
   assert.equal(moveItem(s,{kind:'component',index:0},{x:9,y:5}).rejected,1);
@@ -230,13 +229,13 @@ test('placed components rotate around a stable pivot without drifting or losing 
   assert.deepEqual(rotateItem(left.state,left.item,1).state,original);
 });
 
-test('placed rotation rejects collisions, unsupported field edges, and blocked pump outlets without changing the ship',()=>{
+test('placed rotation allows unsupported field edges but rejects collisions and blocked pump outlets',()=>{
   let s=apply(engine(),'small-thruster',['5,5']).state;
   // A 1x2 thruster becomes 2x1 at (4,6) around its central grid tile.
   s=apply(s,'heater',['4,6']).state;let before=structuredClone(s);
   let result=rotateItem(s,{kind:'component',index:0},1);assert.equal(result.rejected,1);assert.equal(result.state,s);assert.deepEqual(s,before);
   s=apply(engine(),'pilot-console',['17,0'],false,1).state;assert.equal(s.components.length,1);
-  result=rotateItem(s,{kind:'component',index:0},-1);assert.equal(result.rejected,1);assert.equal(result.state,s);
+  result=rotateItem(s,{kind:'component',index:0},-1);assert.equal(result.rejected,0);assert.equal(validate(result.state).outsideComponents.length,1);
   s=apply(apply(engine(),'hull',['5,5','4,5']).state,'oxygen-pump',['5,5']).state;
   result=rotateItem(s,{kind:'component',index:0},1);assert.equal(result.rejected,1);assert.match(result.message,/non-hull/);
   result=rotateItem(s,{kind:'component',index:0},-1);assert.equal(result.rejected,0);assert.equal(result.state.components[0].rotation,3);assert.deepEqual(result.state.hull,s.hull);

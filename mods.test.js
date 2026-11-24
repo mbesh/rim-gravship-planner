@@ -76,7 +76,7 @@ test('extenders can link through amplifiers but cannot chain through another ext
   let s=design();assert.deepEqual([extenderProfile(s).fieldRadius,extenderProfile(s).supportOffset,extenderProfile(s).limit],[12.9,100,10]);
   s=put(s,'VGE_GravFieldAmplifier','9,-1');assert.equal(capacity(s),450);
   s=put(s,'extender','30,0');assert.equal(capacity(s),550);assert.equal(inField(s,{x:42,y:0}),true);
-  assert.equal(apply(s,'extender',['42,0']).rejected,1,'an extender does not link to another extender');
+  const unlinked=apply(s,'extender',['42,0']);assert.equal(unlinked.rejected,0);assert.equal(validate(unlinked.state).invalidExtenders.length,1);assert.equal(capacity(unlinked.state),capacity(s),'an unlinked extender adds no support');assert.equal(inField(unlinked.state,{x:53,y:0}),false,'extenders still cannot chain');
   s=apply(s,'VGE_GravFieldAmplifier',['9,-1'],true).state;
   assert.equal(validate(s).invalidExtenders.length,1);assert.equal(capacity(s),250);assert.equal(inField(s,{x:42,y:0}),false);
   s=design('VGE_GravhulkEngine');
@@ -103,16 +103,16 @@ test('dilutor extends the field and subtracts support; beam chains grow and coll
   assert.equal(apply(s,'VGE_GravFieldDilutor',['-10,-2']).rejected,1);
   s=design();s=put(s,'VGE_GravshipStructuralBeam','11,0');s=put(s,'VGE_GravshipStructuralBeam','14,0');
   assert.equal(inField(s,{x:17,y:0}),true);assert.equal(capacity(s),250);
-  const moved=moveItem(s,{kind:'component',index:1},{x:17,y:0});assert.equal(moved.rejected,1,'moving cannot use its previous footprint to extend itself');
+  const moved=moveItem(s,{kind:'component',index:1},{x:17,y:0});assert.equal(moved.rejected,0);assert.equal(inField(moved.state,{x:20,y:0}),false,'an unsupported planned beam cannot extend itself');assert.equal(validate(moved.state).outsideComponents.length,1);
   s=apply(s,'VGE_GravshipStructuralBeam',['11,0'],true).state;assert.equal(inField(s,{x:17,y:0}),false);
 });
 
-test('subscaffold connects floors without capacity cost and cannot support structures',()=>{
+test('subscaffold connects floors for free and permits planned structures with missing-support warnings',()=>{
   let s=design('VGE_GravjumperEngine');s=put(s,'floor','0,0');s=put(s,'scaffold','1,0');s=put(s,'floor','2,0');
   assert.equal(s.floor.length,2);assert.equal(capacity(s),100);assert.equal(validate(s).disconnected.length,0);
-  for(const type of ['hull','extender','heater'])assert.equal(apply(s,type,['1,0']).rejected,1,type);
+  for(const type of ['hull','extender','heater']){const planned=apply(s,type,['1,0']);assert.equal(planned.rejected,0,type);assert.ok(validate(planned.state).missing.includes('1,0'));assert.ok(validate(planned.state).unsupportedTiles.includes('1,0'));}
   s=put(s,'floor','1,0');assert.deepEqual(s.scaffold,[]);assert.equal(s.floor.length,3);
-  s=put(s,'hull','1,0');assert.equal(apply(s,'scaffold',['1,0']).rejected,1);
+  s=put(s,'hull','1,0');const walkway=apply(s,'scaffold',['1,0']);assert.equal(walkway.rejected,0);assert.ok(validate(walkway.state).missing.includes('1,0'));
 });
 
 test('pipe networks coexist with buildings and each other; mod hull replacements retain support and mount pumps',()=>{

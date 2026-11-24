@@ -13,7 +13,7 @@ import * as systems from './systems.js';
 import * as systemsUI from './systems-ui.js';
 
 function createEditor({deferHullTextures=false}={}){
-  const pendingHullImages=[],drawnText=[],drawnImages=[];
+  const pendingHullImages=[],drawnText=[],drawnImages=[],drawnRects=[];
   const frameQueue=[],counters={frames:0,validation:0,fields:0,apply:0,placement:0,previewMove:0,move:0,libraryReads:0,clones:0};
   let frameId=0;
   const flush=()=>{let passes=0;while(frameQueue.length){assert.ok(passes++<10,'rendering should settle');const batch=frameQueue.splice(0);for(const callback of batch)callback(0);}};
@@ -35,7 +35,7 @@ function createEditor({deferHullTextures=false}={}){
   const html=readFileSync('index.html','utf8');
   for(const match of html.matchAll(/<([\w-]+)[^>]*\bid="([^"]+)"[^>]*>/g)){const el=new Element(match[1]);el.id=match[2];ids.set(el.id,el);}
   ids.get('name').value='Integration test';
-  const ctx=new Proxy({clearRect:()=>{counters.frames++;drawnText.length=0;drawnImages.length=0;},drawImage:(im,...args)=>drawnImages.push({file:im.srcValue,args}),measureText:text=>({width:String(text).length*7}),fillText:(text,x,y)=>drawnText.push({text,x,y})}, {get:(target,k)=>target[k]||(()=>{}),set:(target,k,v)=>(target[k]=v,true)});
+  const ctx=new Proxy({clearRect:()=>{counters.frames++;drawnText.length=0;drawnImages.length=0;drawnRects.length=0;},fillRect:(...args)=>drawnRects.push({color:ctx.fillStyle,args}),drawImage:(im,...args)=>drawnImages.push({file:im.srcValue,args}),measureText:text=>({width:String(text).length*7}),fillText:(text,x,y)=>drawnText.push({text,x,y})}, {get:(target,k)=>target[k]||(()=>{}),set:(target,k,v)=>(target[k]=v,true)});
   ids.get('canvas').getContext=()=>ctx;
   const queryAll=q=>q==='[data-layer]'?nodes.filter(n=>n.dataset.layer):q==='[data-shape]'?nodes.filter(n=>n.dataset.shape):q==='.component-item'?nodes.filter(n=>n.className.split(' ').includes('component-item')):q==='.component-group'?nodes.filter(n=>n.className==='component-group'):[];
   const document={getElementById:id=>{assert.ok(ids.has(id),`Missing element ${id}`);return ids.get(id);},createElement:t=>new Element(t),createTextNode:text=>({textContent:text}),querySelectorAll:queryAll,querySelector:q=>q==='dialog[open]'?[...ids.values()].find(n=>n.tagName==='dialog'&&n.open):null};
@@ -48,7 +48,7 @@ function createEditor({deferHullTextures=false}={}){
   const source=readFileSync('app.js','utf8').replace(/^import .+;\r?\n/gm,'');
   vm.runInNewContext(source,sandbox,{filename:'app.js'});
   flush();
-  return {nodes,ids,storage,events,drawnText,drawnImages,requestedImages,hullCalls,queryAll,flush,counters,pendingFrames:()=>frameQueue.length,finishHullImages:()=>{for(const load of pendingHullImages.splice(0))load();flush();}};
+  return {nodes,ids,storage,events,drawnText,drawnImages,drawnRects,requestedImages,hullCalls,queryAll,flush,counters,pendingFrames:()=>frameQueue.length,finishHullImages:()=>{for(const load of pendingHullImages.splice(0))load();flush();}};
 }
 
 test('editor boots and supports palette, Q/E/buttons, placement, undo/redo and local save',()=>{
@@ -458,4 +458,34 @@ test('selected-component rotation works with floating handles, toolbar and Q/E, 
   assert.equal(ids.get('component-rotation-handles').hidden,true,'undo/redo clears the selection');
   nodes.find(n=>n.dataset.layer==='heater').onclick();click(9,9);ids.get('select-mode').onclick();click(9,9);
   assert.equal(ids.get('rotation-controls').hidden,true);assert.equal(ids.get('component-rotation-handles').hidden,true);
+});
+
+
+test('outside-field tiles and components render red and survive save/load',()=>{
+  const {ids,nodes,storage,drawnRects,flush}=createEditor(),canvas=ids.get('canvas');
+  const pointer=(x,y)=>({button:0,pointerId:1,clientX:450+x*22+11,clientY:300+y*22+11,preventDefault(){}});
+  const click=(x,y)=>{canvas.onpointerdown(pointer(x,y));canvas.onpointerup(pointer(x,y));flush();};
+  const choose=type=>{nodes.find(n=>n.dataset.layer===type).onclick();flush();};
+  const saved=()=>{ids.get('save').onclick();flush();return JSON.parse(storage.get('gravship-designs-v1'))[0].state;};
+  click(0,0);choose('floor');click(20,0);choose('heater');click(20,0);
+  assert.equal(ids.get('component-count').textContent,1);assert.equal(ids.get('used').textContent,1);
+  assert.ok(drawnRects.some(r=>r.color==='#e35b5b66'),'unsupported parts have an explicit red overlay');
+  const before=saved();assert.equal(model.validate(before).outsideTiles.length,1);
+  ids.get('load').onclick();ids.get('design-list').children[0].children[1].onclick();flush();
+  assert.deepEqual(saved(),before);assert.ok(drawnRects.some(r=>r.color==='#e35b5b66'));
+});
+
+
+test('missing substructure renders red and disappears from the footprint after floor is added',()=>{
+  const {ids,nodes,drawnRects,storage,flush}=createEditor(),canvas=ids.get('canvas');
+  const pointer=(x,y)=>({button:0,pointerId:1,clientX:450+x*22+11,clientY:300+y*22+11,preventDefault(){}});
+  const click=(x,y)=>{canvas.onpointerdown(pointer(x,y));canvas.onpointerup(pointer(x,y));flush();};
+  const choose=type=>{nodes.find(n=>n.dataset.layer===type).onclick();flush();};
+  click(0,0);choose('floor');for(let y=-1;y<=1;y++)for(let x=-1;x<=1;x++)click(x,y);
+  assert.ok(!drawnRects.some(r=>r.color==='#e35b5b66'),'fully supported engine has no red tiles');
+  choose('heater');click(5,5);assert.equal(ids.get('component-count').textContent,1);assert.ok(drawnRects.some(r=>r.color==='#e35b5b66'));
+  ids.get('save').onclick();const saved=JSON.parse(storage.get('gravship-designs-v1'))[0].state;assert.ok(model.validate(saved).missing.includes('5,5'));
+  choose('floor');click(5,5);assert.ok(!drawnRects.some(r=>r.color==='#e35b5b66'),'adding the missing foundation removes red');
+  ids.get('undo').onclick();flush();assert.ok(drawnRects.some(r=>r.color==='#e35b5b66'),'Undo restores the missing-support warning');
+  ids.get('redo').onclick();flush();assert.ok(!drawnRects.some(r=>r.color==='#e35b5b66'));
 });

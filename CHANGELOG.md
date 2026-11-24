@@ -1,5 +1,14 @@
 # Release notes
 
+## 1.0.4 — 2026-11-24
+
+- Allow planning tiles and components outside the grav field, including moves and rotations. Mark unsupported placements red while Validation highlights is enabled.
+- Allow structures without substructure, including over subscaffold. Mark missing foundation tiles red; adding substructure underneath clears the warning.
+- Keep invalid field extenders and unlinked mod field generators from adding field coverage or capacity. Preserve collision, mounting, component-count, substructure-capacity, and save-grid limits.
+- Show red placement and movement previews, retain warnings through save/load, and clear field warnings when valid coverage reaches the design.
+- Reuse field sources during validation and add regression coverage for both planning modes, support restoration, and Undo/Redo.
+- Validate with 123 automated tests and desktop/mobile browser checks. Physical-device Safari testing and more thorough in-game verification of Vanilla Gravship Expanded support remain outstanding.
+
 ## 1.0.3 — 2026-11-24
 
 - Add touch-sized rotation arrows beside selected rotatable components. Choose **Select / move**, tap the component, then use the arrows.
