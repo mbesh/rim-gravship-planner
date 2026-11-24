@@ -50,12 +50,14 @@ The inspector shows fuel storage, refining and consumption, range from fuel and 
 | Deselect the build tool | Right-click empty space or press Escape |
 | Select and move | Choose Select / move, then drag a placed item |
 | Cancel a move | Escape |
-| Pan | Space + drag or middle mouse drag |
-| Zoom | Mouse wheel or zoom buttons |
+| Pan | Two-finger drag, choose Pan and drag, Space + drag, or middle mouse drag |
+| Zoom | Pinch with two fingers, mouse wheel, or zoom buttons |
 | Undo / redo | Ctrl+Z / Ctrl+Shift+Z |
 | Save | Ctrl+S or Save design |
 
 Autodoors and hull replace each other while preserving substructure. Oxygen pumps mount on hull edges, face a non-hull tile, and appear as small orange markers. Moving items preserves their orientation; invalid drops leave the design unchanged.
+
+On phones and tablets, the shape selector displays readable shape names and the drawing controls stay within the viewport. The design name and save status remain visible; the first save of an unnamed design asks for a name. The palette uses one scroll region with sticky search and collapsible component categories. Starting a two-finger navigation gesture cancels the unfinished edit without adding an undo step.
 
 ## Tests
 

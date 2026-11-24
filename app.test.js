@@ -37,7 +37,7 @@ function createEditor({deferHullTextures=false}={}){
   ids.get('name').value='Integration test';
   const ctx=new Proxy({clearRect:()=>{counters.frames++;drawnText.length=0;drawnImages.length=0;},drawImage:(im,...args)=>drawnImages.push({file:im.srcValue,args}),measureText:text=>({width:String(text).length*7}),fillText:(text,x,y)=>drawnText.push({text,x,y})}, {get:(target,k)=>target[k]||(()=>{}),set:(target,k,v)=>(target[k]=v,true)});
   ids.get('canvas').getContext=()=>ctx;
-  const queryAll=q=>q==='[data-layer]'?nodes.filter(n=>n.dataset.layer):q==='[data-shape]'?nodes.filter(n=>n.dataset.shape):q==='.component-item'?nodes.filter(n=>n.className.split(' ').includes('component-item')):q==='#component-options h3'?ids.get('component-options').children.filter(n=>n.tagName==='h3'):[];
+  const queryAll=q=>q==='[data-layer]'?nodes.filter(n=>n.dataset.layer):q==='[data-shape]'?nodes.filter(n=>n.dataset.shape):q==='.component-item'?nodes.filter(n=>n.className.split(' ').includes('component-item')):q==='.component-group'?nodes.filter(n=>n.className==='component-group'):[];
   const document={getElementById:id=>{assert.ok(ids.has(id),`Missing element ${id}`);return ids.get(id);},createElement:t=>new Element(t),createTextNode:text=>({textContent:text}),querySelectorAll:queryAll,querySelector:q=>q==='dialog[open]'?[...ids.values()].find(n=>n.tagName==='dialog'&&n.open):null};
   const window={devicePixelRatio:1,addEventListener:(type,fn)=>events[type]=fn,requestAnimationFrame:fn=>{frameQueue.push(fn);return ++frameId;}};
   const sandbox={...model,...catalogue,...hull,...measurements,...release,...mods,...scenario,...systems,...systemsUI,document,window,localStorage:{getItem:k=>{if(k==='gravship-designs-v1')counters.libraryReads++;return storage.get(k)||null;},setItem:(k,v)=>storage.set(k,v)},structuredClone:value=>{counters.clones++;return structuredClone(value);},crypto:{randomUUID:()=> 'test-design'},console,OffscreenCanvas:class{constructor(w,h){this.width=w;this.height=h;}getContext(){return {drawImage(){},getImageData:(x,y,w,h)=>({data:new Uint8ClampedArray(w*h*4)}),putImageData(){}};}},Image:class{set src(value){this.srcValue=value;const data=readFileSync(value);if(value.endsWith('.png')){this.width=data.readUInt32BE(16);this.height=data.readUInt32BE(20);}else{this.width=64;this.height=64;}if(deferHullTextures&&value.startsWith('assets/hull-prepared/'))pendingHullImages.push(()=>this.onload?.());else this.onload?.();}},ResizeObserver:class{observe(){}},setTimeout:()=>0,clearTimeout:()=>{}};
@@ -336,4 +336,69 @@ test('live shape measurements update while dragging and disappear on release or 
   canvas.onpointercancel(pointer(10,4));flush();
   choose('rect');canvas.onpointerdown(pointer(4,4,1));canvas.onpointermove(pointer(8,10,1));flush();assert.deepEqual(text(),[]);
   canvas.onpointerup(pointer(8,10,1));flush();
+});
+
+
+test('two-finger navigation rolls back painting, preserves history, and waits for all fingers to lift',()=>{
+  const {ids,nodes,storage,flush}=createEditor(),canvas=ids.get('canvas');
+  const touch=(id,x,y)=>({button:0,pointerId:id,pointerType:'touch',clientX:450+x*22+11,clientY:300+y*22+11,preventDefault(){}});
+  const click=(x,y)=>{canvas.onpointerdown(touch(1,x,y));canvas.onpointerup(touch(1,x,y));flush();};
+  const saved=()=>{ids.get('save').onclick();flush();return JSON.parse(storage.get('gravship-designs-v1'))[0].state;};
+  click(0,0);nodes.find(n=>n.dataset.layer==='floor').onclick();flush();click(1,1);
+  const before=saved();
+  canvas.onpointerdown(touch(1,4,4));canvas.onpointermove(touch(1,5,4));flush();assert.ok(ids.get('used').textContent>1);
+  canvas.onpointerdown(touch(2,8,4));
+  canvas.onpointermove(touch(1,3,5));canvas.onpointermove(touch(2,10,5));flush();
+  assert.deepEqual(saved(),before,'pinch cancels the whole unfinished stroke');
+  assert.notEqual(ids.get('zoom-level').textContent,'100%');
+  canvas.onpointerup(touch(1,3,5));canvas.onlostpointercapture(touch(1,3,5));
+  canvas.onpointermove(touch(2,12,5));canvas.onpointerup(touch(2,12,5));flush();assert.deepEqual(saved(),before);
+  ids.get('undo').onclick();flush();assert.equal(saved().floor.length,0,'navigation creates no undo entry');
+  ids.get('redo').onclick();flush();assert.deepEqual(saved(),before);
+  click(2,2);assert.equal(saved().floor.length,2,'normal drawing resumes after every finger is released');
+});
+
+test('Pan mode moves the view without editing, supports touch, and returns to the previous drawing tool',()=>{
+  const {ids,nodes,storage,flush}=createEditor(),canvas=ids.get('canvas');
+  const pointer=(x,y)=>({button:0,pointerId:1,pointerType:'touch',clientX:450+x*22+11,clientY:300+y*22+11,preventDefault(){}});
+  const stroke=(a,b)=>{canvas.onpointerdown(pointer(...a));canvas.onpointermove(pointer(...b));canvas.onpointerup(pointer(...b));flush();};
+  const saved=()=>{ids.get('save').onclick();return JSON.parse(storage.get('gravship-designs-v1'))[0].state;};
+  stroke([0,0],[0,0]);nodes.find(n=>n.dataset.layer==='floor').onclick();flush();
+  ids.get('pan-mode').onclick();flush();assert.equal(ids.get('mode-label').textContent,'Pan view');assert.equal(ids.get('add').disabled,true);
+  stroke([5,5],[7,6]);assert.equal(saved().floor.length,0);
+  ids.get('pan-mode').onclick();flush();assert.equal(ids.get('mode-label').textContent,'Place substructure');
+  stroke([5,5],[5,5]);assert.deepEqual(saved().floor,['3,4'],'painting uses the translated camera');
+  ids.get('pan-mode').onclick();nodes.find(n=>n.dataset.layer==='hull').onclick();flush();
+  assert.equal(ids.get('pan-mode').attributes['aria-pressed'],false,'choosing a part exits Pan mode');
+});
+
+test('pointer ownership and touch cancellation do not commit another finger or lose an edit',()=>{
+  const {ids,nodes,storage,flush}=createEditor(),canvas=ids.get('canvas');
+  const pointer=(id,x,y,type='pen')=>({button:0,pointerId:id,pointerType:type,clientX:450+x*22+11,clientY:300+y*22+11,preventDefault(){}});
+  const saved=()=>{ids.get('save').onclick();flush();return JSON.parse(storage.get('gravship-designs-v1'))[0].state;};
+  canvas.onpointerdown(pointer(1,0,0));canvas.onpointerup(pointer(1,0,0));nodes.find(n=>n.dataset.layer==='floor').onclick();flush();
+  canvas.onpointerdown(pointer(1,4,4));canvas.onpointerdown(pointer(2,8,8));canvas.onpointermove(pointer(2,10,8));canvas.onpointerup(pointer(2,10,8));
+  canvas.onpointermove(pointer(1,5,4));canvas.onpointerup(pointer(1,5,4));flush();assert.deepEqual(saved().floor,['4,4','5,4']);
+  canvas.onpointerdown(pointer(1,8,8,'touch'));canvas.onpointerdown(pointer(2,10,8,'touch'));canvas.onpointercancel(pointer(2,10,8,'touch'));
+  canvas.onpointermove(pointer(1,7,8,'touch'));canvas.onpointerup(pointer(1,7,8,'touch'));flush();assert.deepEqual(saved().floor,['4,4','5,4']);
+});
+
+test('first save asks for a name, trims it, and subsequent saves update the same design',()=>{
+  const {ids,storage,flush}=createEditor();ids.get('name').value='Untitled gravship';ids.get('save').onclick();
+  assert.equal(ids.get('save-dialog').open,true);assert.equal(storage.has('gravship-designs-v1'),false);
+  ids.get('save-name').value='  ';ids.get('save-form').onsubmit({preventDefault(){}});assert.equal(storage.has('gravship-designs-v1'),false);
+  ids.get('save-name').value='  The Horizon  ';ids.get('save-form').onsubmit({preventDefault(){}});flush();
+  let designs=JSON.parse(storage.get('gravship-designs-v1'));assert.equal(designs.length,1);assert.equal(designs[0].name,'The Horizon');
+  assert.equal(ids.get('name').value,'The Horizon');assert.equal(ids.get('save-dialog').open,false);
+  ids.get('name').value='Horizon II';ids.get('name').oninput();ids.get('save').onclick();flush();
+  designs=JSON.parse(storage.get('gravship-designs-v1'));assert.equal(designs.length,1);assert.equal(designs[0].name,'Horizon II');
+});
+
+test('component search opens matching categories and the shape picker updates the drawing tool',()=>{
+  const {ids,nodes,queryAll,flush}=createEditor();
+  for(const group of queryAll('.component-group'))group.open=false;
+  ids.get('component-search').value='solar';ids.get('component-search').oninput();
+  const groups=queryAll('.component-group').filter(g=>!g.hidden);assert.equal(groups.length,1);assert.equal(groups[0].open,true);
+  nodes.find(n=>n.dataset.layer==='floor').onclick();ids.get('shape-picker').value='disc';ids.get('shape-picker').onchange();flush();
+  assert.equal(ids.get('shape-label').textContent,'Filled circle');assert.equal(nodes.find(n=>n.dataset.shape==='disc').attributes['aria-pressed'],true);
 });
