@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {existsSync,readFileSync} from 'node:fs';
-import {COMPONENTS,componentDefinition,componentBounds,componentCells,componentSprite,componentVisual,barrierJoins,exhaustCells,pumpMount} from './components.js';
+import {COMPONENTS as ALL_COMPONENTS,componentDefinition,componentBounds,componentCells,componentSprite,componentVisual,barrierJoins,exhaustCells,pumpMount} from './components.js';
+const COMPONENTS=ALL_COMPONENTS.filter(c=>!c.chapter);
 import {blank,apply,validate,sanitize,hitItem,itemPosition,moveItem} from './model.js';
 const engine=()=>apply(blank(),'engine',['0,0']).state;
 test('component catalogue has wiki footprints and maximum counts',()=>{

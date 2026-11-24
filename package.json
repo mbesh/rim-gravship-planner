@@ -7,6 +7,9 @@
     "dev": "node server.mjs",
     "start": "node server.mjs",
     "test": "node --test",
+    "sync:version": "node tools/sync-version.mjs",
+    "check:version": "node tools/sync-version.mjs --check",
+    "version": "node tools/sync-version.mjs",
     "prepare:hull": "node tools/prepare-hull-textures.mjs",
     "check:hull-textures": "node tools/prepare-hull-textures.mjs --check"
   }

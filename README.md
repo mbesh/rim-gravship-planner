@@ -18,6 +18,8 @@ npm start -- --port 5174
 
 ## Planning a ship
 
+The build palette floats over the upper-left grid corner; click its heading to collapse it. Drawing shapes, Add/Erase, and rotation controls float along the bottom. On narrow screens the palette starts collapsed and closes after choosing an item. Mod, view and rendering options are under **Build palette → Ship settings**.
+
 - Place one grav engine, then draw substructure beneath and around it.
 - Draw individual tiles, straight or diagonal lines, outlined or filled rectangles, and outlined or filled circles.
 - While dragging a line, circle, or rectangle, a center badge shows the preview's tile count. Width and height appear along the top and left when that dimension is greater than four tiles. Straight lines show their count once; outlines and filled shapes count their actual preview tiles.
@@ -25,7 +27,17 @@ npm start -- --port 5174
 - Add tanks, thrusters, a pilot console, upgrades, life-support equipment, autodoors, and solar generators. The palette shows footprints and stated component limits, with links to the wiki. Solar generators are fixed 4 × 4 components under Power and need 16 supporting substructure tiles.
 - Watch design checks for missing foundations, disconnected substructure, unsupported tiles, blocked thruster clearance, and invalid pump placement.
 - Save and load named designs in browser local storage. Designs stay on the same browser, device, and origin (including port).
-- Hull uses fast, cardinal-only rendering by default. Under Rendering, enable **Render diagonal in hull (slower performance)** for the detailed diagonal artwork. This view option leaves the design unchanged and starts off on each page load. Small edits update nearby diagonal hull cells; the app loads prepared textures without processing screenshot pixels in the browser.
+- Hull corners and detailed diagonal artwork are enabled by default. Under Rendering, turn off **Render diagonal in hull (slower performance)** to use faster cardinal-only rendering. This view option leaves the design unchanged. Small edits update nearby diagonal hull cells; the app loads prepared textures without processing screenshot pixels in the browser.
+
+## Mod support
+
+Enable **Vanilla Gravship Expanded — Chapter 1** or **Chapter 2** under **Build palette → Ship settings**. Chapter 2 enables Chapter 1 automatically. Select a gravjumper, gravship, or gravhulk engine; the planner applies the corresponding footprint, field and capacity rules. Mod settings are saved with each design.
+
+The mods add 109 placeable components, two engine variants, and subscaffold, using original mod artwork. See [mod rules and source notes](MOD_SUPPORT.md) and the [complete component catalog](MOD_CATALOG.md).
+
+## Ship systems
+
+The inspector shows fuel storage, refining and consumption, range from fuel and thrusters, oxygen production and crew reserves, and heatsink capacity, jump heat and cooling. Open **Planning assumptions** to set crew, cabin volume, jump distance, fill levels, electric charge, vacuum and Heat Dissipation research. These values are saved with the design. See [formulas and assumptions](SYSTEMS.md).
 
 ## Controls
 
@@ -74,11 +86,17 @@ Normal tests verify their source hashes, reference grids, cleanup recipe, PNG
 dimensions, and output hashes. The optional pixel check above also verifies that
 each prepared image exactly matches a fresh run of the cleanup function.
 
+## Releases
+
+The header displays the release version from `package.json`, starting with **1.0.0**. See [release notes](CHANGELOG.md) and the [release workflow](RELEASING.md) for version bumps and deployment.
+
 ## Project files
 
 - `app.js`, `index.html`, `style.css`: editor interface and canvas rendering.
 - `model.js`: ship state, drawing geometry, placement rules, validation, and movement.
 - `components.js`: component catalogue, footprints, rotations, artwork, and exhaust areas.
+- `mods.js`, `mod-data.js`: mod dependency settings, engine profiles, imported components, and vanilla overrides.
+- `tools/import-mods.py`: optional regeneration from the official mod source checkouts.
 - `hull.js`: floor-aware hull corner selection, incremental layout updates, texture-preparation rules, and tile rendering.
 - `tools/prepare-hull-textures.mjs`: development-only generation and pixel verification of prepared hull artwork.
 - `server.mjs`: local static development server.
@@ -87,3 +105,5 @@ each prepared image exactly matches a fresh run of the cleanup function.
 ## Artwork and references
 
 Unofficial fan project; not affiliated with Ludeon Studios. RimWorld artwork remains the property of its respective owners. Component images were supplied from the [RimWorld Wiki](https://rimworldwiki.com/wiki/Gravship). The cleaned east-facing vac barrier was derived from an in-game screenshot with AI-assisted background removal. The oxygen pump uses a custom schematic marker.
+
+Vanilla Gravship Expanded artwork and data are credited to the Vanilla Expanded team. See [mod artwork attribution](assets/mods/NOTICE.md) for sources and licensing.

@@ -2,9 +2,9 @@
 
 `H` is hull, `S` is substructure without hull, and `.` is empty.
 
-This document describes the detailed diagonal renderer. The app starts with fast
-cardinal-only rendering; enable **Render diagonal in hull (slower performance)**
-under Rendering to use the reference-based artwork below.
+This document describes the detailed diagonal renderer, enabled by default. Turn
+off **Render diagonal in hull (slower performance)** under Rendering to use
+faster cardinal-only artwork instead.
 
 ## Integrated references
 
