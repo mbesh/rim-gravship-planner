@@ -1,5 +1,12 @@
 # Release notes
 
+## 1.0.2 — 2026-11-24
+
+- Move **Select / move** into the bottom floating toolbar so selection is available without opening the build palette.
+- Show the selected item's name and a **Remove selected** action. Delete and Backspace also remove the selection; Undo restores it. Removing a component preserves its supporting floor and other overlapping layers.
+- Adapt the toolbar for phones, tablets, and short landscape screens, hiding irrelevant drawing controls during selection.
+- Validate with 113 automated tests and mobile/desktop browser layout and native-button checks. Physical-device verification of tapping Remove immediately after dragging remains outstanding.
+
 ## 1.0.1 — 2026-11-24
 
 - Add two-finger pan and pinch zoom, with a visible Pan tool for one-finger navigation. Starting a navigation gesture restores the unfinished edit and preserves undo history.

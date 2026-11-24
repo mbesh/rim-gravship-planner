@@ -18,7 +18,7 @@ npm start -- --port 5174
 
 ## Planning a ship
 
-The build palette floats over the upper-left grid corner; click its heading to collapse it. Drawing shapes, Add/Erase, and rotation controls float along the bottom. On narrow screens the palette starts collapsed and closes after choosing an item. Mod, view and rendering options are under **Build palette → Ship settings**.
+The build palette floats over the upper-left grid corner; click its heading to collapse it. **Select / move**, drawing shapes, Add/Erase, and rotation controls are available in the floating toolbar along the bottom. On narrow screens the palette starts collapsed and closes after choosing an item. Mod, view and rendering options are under **Build palette → Ship settings**.
 
 - Place one grav engine, then draw substructure beneath and around it.
 - Draw individual tiles, straight or diagonal lines, outlined or filled rectangles, and outlined or filled circles.
@@ -49,6 +49,7 @@ The inspector shows fuel storage, refining and consumption, range from fuel and 
 | Erase the active palette layer | Right-click an occupied tile, or choose Erase |
 | Deselect the build tool | Right-click empty space or press Escape |
 | Select and move | Choose Select / move, then drag a placed item |
+| Remove selected item | Remove selected button, Delete, or Backspace; Undo restores it |
 | Cancel a move | Escape |
 | Pan | Two-finger drag, choose Pan and drag, Space + drag, or middle mouse drag |
 | Zoom | Pinch with two fingers, mouse wheel, or zoom buttons |

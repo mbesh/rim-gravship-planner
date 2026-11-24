@@ -402,3 +402,40 @@ test('component search opens matching categories and the shape picker updates th
   nodes.find(n=>n.dataset.layer==='floor').onclick();ids.get('shape-picker').value='disc';ids.get('shape-picker').onchange();flush();
   assert.equal(ids.get('shape-label').textContent,'Filled circle');assert.equal(nodes.find(n=>n.dataset.shape==='disc').attributes['aria-pressed'],true);
 });
+
+
+test('selected component removal preserves foundations, clears selection, and is one undoable edit',()=>{
+  const {ids,nodes,storage,flush}=createEditor(),canvas=ids.get('canvas');
+  const pointer=(x,y)=>({button:0,pointerId:1,clientX:450+x*22+11,clientY:300+y*22+11,preventDefault(){}});
+  const click=(x,y)=>{canvas.onpointerdown(pointer(x,y));canvas.onpointerup(pointer(x,y));flush();};
+  const choose=type=>{nodes.find(n=>n.dataset.layer===type).onclick();flush();};
+  const saved=()=>{ids.get('save').onclick();flush();return JSON.parse(storage.get('gravship-designs-v1'))[0].state;};
+  click(0,0);choose('floor');click(4,4);click(4,5);choose('small-thruster');click(4,4);
+  const before=saved();ids.get('select-mode').onclick();flush();
+  assert.equal(ids.get('remove-selected').disabled,true);assert.equal(ids.get('remove-selected').hidden,false);
+  click(4,5);assert.equal(ids.get('selection-name').textContent,'Small thruster');assert.equal(ids.get('remove-selected').disabled,false);
+  ids.get('remove-selected').onclick();flush();let after=saved();
+  assert.equal(after.components.length,0);assert.deepEqual(after.floor,before.floor);assert.deepEqual(after.engine,before.engine);
+  assert.equal(ids.get('remove-selected').disabled,true);assert.equal(ids.get('selection-name').textContent,'Select an item');
+  ids.get('undo').onclick();flush();assert.deepEqual(saved(),before);
+  ids.get('redo').onclick();flush();assert.deepEqual(saved(),after);
+  choose('floor');assert.equal(ids.get('remove-selected').hidden,true);
+});
+
+test('Delete and Backspace remove only the selection, skip inputs and dialogs, and retain engine erase semantics',()=>{
+  const {ids,nodes,events,storage,flush}=createEditor(),canvas=ids.get('canvas');
+  const pointer=(x,y)=>({button:0,pointerId:1,clientX:450+x*22+11,clientY:300+y*22+11,preventDefault(){}});
+  const click=(x,y)=>{canvas.onpointerdown(pointer(x,y));canvas.onpointerup(pointer(x,y));flush();};
+  const keyboard=(key,target=canvas)=>{let prevented=false;events.keydown({key,target,preventDefault(){prevented=true;}});flush();return prevented;};
+  const saved=()=>{ids.get('save').onclick();flush();return JSON.parse(storage.get('gravship-designs-v1'))[0].state;};
+  click(0,0);nodes.find(n=>n.dataset.layer==='floor').onclick();click(0,0);
+  nodes.find(n=>n.dataset.layer==='extender').onclick();click(6,6);ids.get('select-mode').onclick();click(6,6);
+  const before=saved();assert.equal(before.extenders.length,1);
+  assert.equal(keyboard('Delete',ids.get('name')),false);assert.deepEqual(saved(),before);
+  ids.get('library').showModal();assert.equal(keyboard('Delete'),false);ids.get('library').close();assert.deepEqual(saved(),before);
+  assert.equal(keyboard('Backspace'),true);assert.equal(saved().extenders.length,0);
+  ids.get('undo').onclick();flush();click(0,0);assert.equal(keyboard('Delete'),true);
+  const after=saved();assert.equal(after.engine,null);assert.equal(after.extenders.length,0);assert.deepEqual(after.floor,before.floor);
+  assert.equal(keyboard('Delete'),false,'empty selection cannot remove the floor underneath');
+  ids.get('undo').onclick();flush();assert.deepEqual(saved(),before);
+});
