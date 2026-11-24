@@ -1,5 +1,14 @@
 # Release notes
 
+## 1.0.3 — 2026-11-24
+
+- Add touch-sized rotation arrows beside selected rotatable components. Choose **Select / move**, tap the component, then use the arrows.
+- Make the toolbar's Rotate buttons and Q / E rotate placed selections as well as placement previews. Keep the toolbar available when nearby arrows cannot fit on a short screen.
+- Rotate around a stable central grid tile without drifting across repeated turns. Support Undo/Redo and reject blocked footprints, unsupported field positions, and invalid oxygen-pump outlets without changing the design.
+- Preserve supporting floor and apply the existing hull-replacement rules for doors. Fixed components remain non-rotatable.
+- Improve short-landscape controls and canvas resizing between tablet and desktop layouts; allow Space to activate focused buttons.
+- Validate with 117 automated tests and Chromium touch-rotation checks across seven mobile/tablet sizes plus desktop. Physical-device Safari testing and more thorough in-game verification of Vanilla Gravship Expanded support remain outstanding.
+
 ## 1.0.2 — 2026-11-24
 
 - Move **Select / move** into the bottom floating toolbar so selection is available without opening the build palette.

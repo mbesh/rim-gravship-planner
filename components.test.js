@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {existsSync,readFileSync} from 'node:fs';
 import {COMPONENTS as ALL_COMPONENTS,componentDefinition,componentBounds,componentCells,componentSprite,componentVisual,barrierJoins,exhaustCells,pumpMount} from './components.js';
 const COMPONENTS=ALL_COMPONENTS.filter(c=>!c.chapter);
-import {blank,apply,validate,sanitize,hitItem,itemPosition,moveItem} from './model.js';
+import {blank,apply,validate,sanitize,hitItem,itemPosition,moveItem,rotateItem} from './model.js';
 const engine=()=>apply(blank(),'engine',['0,0']).state;
 test('component catalogue has wiki footprints and maximum counts',()=>{
   const expected={'autodoor':[1,1,undefined],'small-tank':[2,2,undefined],'large-tank':[3,3,undefined],'small-thruster':[1,2,4],'large-thruster':[2,2,6],'pilot-console':[3,2,undefined],'signal-jammer':[2,2,undefined],'power-cell':[1,1,undefined],'fuel-optimizer':[2,2,2],'shield-generator':[3,3,2],'subpersona-core':[1,1,2],'oxygen-pump':[1,1,undefined],'vac-barrier':[1,1,undefined],'heater':[1,1,undefined],'solar-generator':[4,4,undefined]};
@@ -214,4 +214,47 @@ test('both thruster sizes clear the nozzle side of their native and mirrored art
     s=apply(s,'floor',[front]).state;
     assert.ok(validate(s).blockedExhaust.includes(front),`${type}, rotation ${rotation}: obstruction checks use nozzle side`);
   }
+});
+
+
+test('placed components rotate around a stable pivot without drifting or losing supporting tiles',()=>{
+  let s=apply(engine(),'pilot-console',['5,5']).state;s=apply(s,'floor',componentCells(s.components[0])).state;
+  const original=structuredClone(s),item={kind:'component',index:0};
+  for(let i=1;i<=4;i++){
+    const result=rotateItem(s,item,1);assert.equal(result.rejected,0);s=result.state;
+    assert.equal(s.components[0].rotation,i%4);assert.deepEqual(s.floor,original.floor);
+    assert.deepEqual(s.engine,original.engine);assert.deepEqual(s.extenders,original.extenders);
+  }
+  assert.deepEqual(s,original,'four turns restore footprint, position, and orientation');
+  const left=rotateItem(s,item,-1);assert.equal(left.state.components[0].rotation,3);
+  assert.deepEqual(rotateItem(left.state,left.item,1).state,original);
+});
+
+test('placed rotation rejects collisions, unsupported field edges, and blocked pump outlets without changing the ship',()=>{
+  let s=apply(engine(),'small-thruster',['5,5']).state;
+  // A 1x2 thruster becomes 2x1 at (4,6) around its central grid tile.
+  s=apply(s,'heater',['4,6']).state;let before=structuredClone(s);
+  let result=rotateItem(s,{kind:'component',index:0},1);assert.equal(result.rejected,1);assert.equal(result.state,s);assert.deepEqual(s,before);
+  s=apply(engine(),'pilot-console',['17,0'],false,1).state;assert.equal(s.components.length,1);
+  result=rotateItem(s,{kind:'component',index:0},-1);assert.equal(result.rejected,1);assert.equal(result.state,s);
+  s=apply(apply(engine(),'hull',['5,5','4,5']).state,'oxygen-pump',['5,5']).state;
+  result=rotateItem(s,{kind:'component',index:0},1);assert.equal(result.rejected,1);assert.match(result.message,/non-hull/);
+  result=rotateItem(s,{kind:'component',index:0},-1);assert.equal(result.rejected,0);assert.equal(result.state.components[0].rotation,3);assert.deepEqual(result.state.hull,s.hull);
+});
+
+test('placed rotation respects two-way and fixed components, limits, and door replacement rules',()=>{
+  let s=apply(engine(),'autodoor',['5,5']).state;
+  const first=rotateItem(s,{kind:'component',index:0},1);assert.equal(first.state.components[0].rotation,1);
+  assert.deepEqual(rotateItem(first.state,first.item,1).state,s);
+  s=apply(engine(),'heater',['5,5']).state;assert.equal(rotateItem(s,{kind:'component',index:0},1).rejected,1);
+  assert.equal(rotateItem(s,{kind:'engine'},1).rejected,1);
+  s=engine();for(const k of ['4,4','7,4','10,4','13,4'])s=apply(s,'small-thruster',[k]).state;
+  assert.equal(rotateItem(s,{kind:'component',index:0},1).rejected,0,'rotating at the limit does not add a component');
+  const modded={...engine(),mods:{chapter1:true,chapter2:true}};
+  const door=ALL_COMPONENTS.find(c=>c.chapter&&c.replacesHull&&c.width>1&&c.height===1);
+  assert.ok(door);s=apply(modded,door.id,['5,5']).state;
+  const bounds=componentBounds(s.components[0]),x=5+Math.floor(bounds.width/2),y=5-Math.floor(bounds.width/2);
+  s=apply(s,'hull',[`${x},${y}`]).state;
+  const turned=rotateItem(s,{kind:'component',index:0},1);assert.equal(turned.rejected,0);
+  assert.ok(!turned.state.hull.includes(`${x},${y}`),'rotating a door uses the same hull replacement rules as placement');
 });

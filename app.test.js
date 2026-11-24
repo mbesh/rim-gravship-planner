@@ -439,3 +439,23 @@ test('Delete and Backspace remove only the selection, skip inputs and dialogs, a
   assert.equal(keyboard('Delete'),false,'empty selection cannot remove the floor underneath');
   ids.get('undo').onclick();flush();assert.deepEqual(saved(),before);
 });
+
+
+test('selected-component rotation works with floating handles, toolbar and Q/E, and is undoable',()=>{
+  const {ids,nodes,events,storage,flush}=createEditor(),canvas=ids.get('canvas');
+  const pointer=(x,y)=>({button:0,pointerId:1,clientX:450+x*22+11,clientY:300+y*22+11,preventDefault(){}});
+  const click=(x,y)=>{canvas.onpointerdown(pointer(x,y));canvas.onpointerup(pointer(x,y));flush();};
+  const saved=()=>{ids.get('save').onclick();flush();return JSON.parse(storage.get('gravship-designs-v1'))[0].state;};
+  click(0,0);nodes.find(n=>n.dataset.layer==='pilot-console').onclick();click(5,5);
+  const before=saved();ids.get('select-mode').onclick();click(5,5);
+  assert.equal(ids.get('rotation-controls').hidden,false);assert.equal(ids.get('rotate').disabled,false);
+  let prevented=false;events.keydown({key:' ',code:'Space',target:ids.get('component-rotate-right'),preventDefault(){prevented=true;}});assert.equal(prevented,false,'Space remains available to activate a focused rotate button');
+  ids.get('component-rotate-right').onclick();flush();assert.equal(saved().components[0].rotation,1);assert.equal(ids.get('rotation-label').textContent,'West');
+  ids.get('rotate-left').onclick();flush();assert.deepEqual(saved(),before);
+  events.keydown({key:'q',target:canvas,preventDefault(){}});flush();assert.equal(saved().components[0].rotation,3);
+  ids.get('undo').onclick();flush();assert.deepEqual(saved(),before);
+  ids.get('redo').onclick();flush();assert.equal(saved().components[0].rotation,3);
+  assert.equal(ids.get('component-rotation-handles').hidden,true,'undo/redo clears the selection');
+  nodes.find(n=>n.dataset.layer==='heater').onclick();click(9,9);ids.get('select-mode').onclick();click(9,9);
+  assert.equal(ids.get('rotation-controls').hidden,true);assert.equal(ids.get('component-rotation-handles').hidden,true);
+});

@@ -46,6 +46,7 @@ The inspector shows fuel storage, refining and consumption, range from fuel and 
 | Place tiles or components | Select a palette item, then click or drag |
 | Draw a shape | Select a drawing tool, then drag between tiles |
 | Rotate before placing | Q / E or the rotation buttons |
+| Rotate a placed component | Select / move, tap the component, then use the arrows beside it, toolbar Rotate buttons, or Q / E |
 | Erase the active palette layer | Right-click an occupied tile, or choose Erase |
 | Deselect the build tool | Right-click empty space or press Escape |
 | Select and move | Choose Select / move, then drag a placed item |
@@ -57,6 +58,8 @@ The inspector shows fuel storage, refining and consumption, range from fuel and 
 | Save | Ctrl+S or Save design |
 
 Autodoors and hull replace each other while preserving substructure. Oxygen pumps mount on hull edges, face a non-hull tile, and appear as small orange markers. Moving items preserves their orientation; invalid drops leave the design unchanged.
+
+Rotatable selections show touch-sized arrows beside their footprint. The toolbar also shows their current facing and Rotate buttons, including when the selected item is close to a screen edge. Rotation uses a stable central tile as its pivot, respects placement rules, and can be undone; blocked rotations leave the component unchanged.
 
 On phones and tablets, the shape selector displays readable shape names and the drawing controls stay within the viewport. The design name and save status remain visible; the first save of an unnamed design asks for a name. The palette uses one scroll region with sticky search and collapsible component categories. Starting a two-finger navigation gesture cancels the unfinished edit without adding an undo step.
 
