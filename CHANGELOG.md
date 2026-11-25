@@ -1,5 +1,12 @@
 # Release notes
 
+## 1.0.10 — 2026-11-25
+
+- Drag component previews with touch and release to place them. Keep newly placed components selected for immediate rotation, movement, or removal, including engines and field extenders.
+- Cancel unfinished placement on interruption or two-finger navigation without adding a component or undo step. Preserve the existing floor, hull, subscaffold, and pipe drawing tools.
+- Show a field extender sprite in the placement preview and explain touch placement in the controls help.
+- Validate with 140 automated tests and touch browser checks on phone, tablet, landscape phone, and desktop layouts. Physical-device Safari testing and more thorough in-game verification of Vanilla Gravship Expanded support remain outstanding.
+
 ## 1.0.9 — 2026-11-24
 
 - Add 57 placeable furniture types under Furniture: 36 base-game items and 21 official DLC additions, including beds, tables, seating, thrones, storage, lighting, children's furniture, outfit stands, and decorations.

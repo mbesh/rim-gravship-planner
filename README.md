@@ -51,6 +51,7 @@ The inspector shows estimated electricity generation (including mod engine outpu
 | Action | Control |
 | --- | --- |
 | Place tiles or components | Select a palette item, then click or drag |
+| Place a component with touch | Choose it in the palette, touch the grid and drag its preview, then release; it stays selected for rotation, moving or removal |
 | Draw a shape | Select a drawing tool, then drag between tiles |
 | Rotate before placing | Q / E or the rotation buttons |
 | Rotate a placed component | Select / move, tap the component, then use the arrows beside it, toolbar Rotate buttons, or Q / E |
@@ -68,7 +69,7 @@ Autodoors and hull replace each other while preserving substructure. Oxygen pump
 
 Rotatable selections show touch-sized arrows beside their footprint. The toolbar also shows their current facing and Rotate buttons, including when the selected item is close to a screen edge. Rotation uses a stable central tile as its pivot, respects placement rules, and can be undone; blocked rotations leave the component unchanged.
 
-On phones and tablets, the shape selector displays readable shape names and the drawing controls stay within the viewport. The design name and save status remain visible; the first save of an unnamed design asks for a name. The palette uses one scroll region with sticky search and collapsible component categories. Starting a two-finger navigation gesture cancels the unfinished edit without adding an undo step.
+On phones and tablets, components (including engines and field extenders) follow your finger until release and then stay selected in Select / move mode. Tap the rotation arrows or toolbar buttons, or drag the selected item again to adjust it. Choose the palette item again to place another copy. Invalid drops add nothing and keep the placement tool active; cancellation or a second finger adds nothing. Substructure, hull, subscaffold and paintable astrofuel pipes keep their brush/shape behavior. The shape selector displays readable shape names and the drawing controls stay within the viewport. The design name and save status remain visible; the first save of an unnamed design asks for a name. The palette uses one scroll region with sticky search and collapsible component categories. Starting a two-finger navigation gesture cancels the unfinished edit without adding an undo step.
 
 ## Tests
 

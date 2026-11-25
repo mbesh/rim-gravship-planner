@@ -551,3 +551,63 @@ test('furniture is searchable by category and DLC and paints a rotated table wit
   ids.get('undo').onclick();flush();assert.equal(ids.get('component-count').textContent,0);
   ids.get('redo').onclick();flush();assert.equal(ids.get('component-count').textContent,1);
 });
+
+
+test('touch component placement previews until release, then stays selected for rotation and another move',()=>{
+  const {ids,nodes,storage,flush,counters}=createEditor(),canvas=ids.get('canvas');
+  const touch=(id,x,y)=>({button:0,pointerId:id,pointerType:'touch',clientX:450+x*22+11,clientY:300+y*22+11,preventDefault(){}});
+  const choose=type=>{nodes.find(n=>n.dataset.layer===type).onclick();flush();};
+  const saved=()=>{ids.get('save').onclick();flush();return JSON.parse(storage.get('gravship-designs-v1'))[0].state;};
+  canvas.onpointerdown(touch(1,0,0));canvas.onpointerup(touch(1,0,0));flush();choose('bed');
+  const applications=counters.apply;canvas.onpointerdown(touch(2,4,4));flush();assert.equal(ids.get('component-count').textContent,0);assert.equal(ids.get('rotate').disabled,true);
+  canvas.onpointermove(touch(2,6,5));flush();assert.equal(ids.get('component-count').textContent,0);assert.equal(counters.apply,applications,'previews do not apply edits');
+  canvas.onpointerup(touch(2,8,6));canvas.onlostpointercapture(touch(2,8,6));flush();let s=saved();
+  assert.deepEqual(s.components,[{type:'bed',x:8,y:6,rotation:0}]);assert.equal(ids.get('selection-name').textContent,'Bed');assert.equal(ids.get('select-mode').attributes['aria-pressed'],true);
+  assert.equal(ids.get('rotate').disabled,false);assert.equal(ids.get('remove-selected').disabled,false);
+  ids.get('rotate').onclick();flush();s=saved();assert.equal(s.components[0].rotation,1);const beforeMove=structuredClone(s.components[0]);
+  canvas.onpointerdown(touch(3,beforeMove.x,beforeMove.y));canvas.onpointermove(touch(3,beforeMove.x+3,beforeMove.y+2));canvas.onpointerup(touch(3,beforeMove.x+3,beforeMove.y+2));flush();s=saved();
+  assert.equal(s.components.length,1);assert.equal(s.components[0].x,beforeMove.x+3);assert.equal(s.components[0].y,beforeMove.y+2);assert.equal(ids.get('selection-name').textContent,'Bed');
+  ids.get('undo').onclick();flush();assert.deepEqual(saved().components[0],beforeMove);
+  ids.get('undo').onclick();flush();assert.equal(saved().components[0].rotation,0);
+  ids.get('undo').onclick();flush();assert.equal(saved().components.length,0,'one undo step for placement');
+  for(let i=0;i<3;i++){ids.get('redo').onclick();flush();}assert.equal(saved().components[0].rotation,1);
+});
+
+test('touch placement cancellation, invalid drops and pinch navigation do not add components or history',()=>{
+  const {ids,nodes,storage,flush}=createEditor(),canvas=ids.get('canvas');
+  const touch=(id,x,y)=>({button:0,pointerId:id,pointerType:'touch',clientX:450+x*22+11,clientY:300+y*22+11,preventDefault(){}});
+  const choose=type=>{nodes.find(n=>n.dataset.layer===type).onclick();flush();};
+  const saved=()=>{ids.get('save').onclick();flush();return JSON.parse(storage.get('gravship-designs-v1'))[0].state;};
+  canvas.onpointerdown(touch(1,0,0));canvas.onpointerup(touch(1,0,0));flush();choose('bed');
+  canvas.onpointerdown(touch(2,4,4));canvas.onpointermove(touch(2,5,5));canvas.onpointercancel(touch(2,5,5));flush();assert.equal(saved().components.length,0);
+  canvas.onpointerdown(touch(3,4,4));canvas.onpointerup(touch(3,0,0));flush();assert.equal(saved().components.length,0);assert.equal(ids.get('mode-label').textContent,'Place bed');
+  canvas.onpointerdown(touch(4,4,4));canvas.onpointerdown(touch(5,8,4));canvas.onpointermove(touch(5,10,4));canvas.onpointerup(touch(4,4,4));canvas.onpointerup(touch(5,10,4));flush();assert.equal(saved().components.length,0);
+  assert.equal(ids.get('mode-label').textContent,'Place bed');
+  ids.get('undo').onclick();flush();assert.equal(saved().engine,null,'cancelled and rejected placement creates no undo entries');
+  ids.get('redo').onclick();flush();assert.ok(saved().engine);
+});
+
+test('touch engines and extenders drop at the release position, while floors and pipes keep painting',()=>{
+  const {ids,nodes,storage,flush}=createEditor(),canvas=ids.get('canvas');
+  const touch=(id,x,y)=>({button:0,pointerId:id,pointerType:'touch',clientX:450+x*22+11,clientY:300+y*22+11,preventDefault(){}});
+  const choose=type=>{nodes.find(n=>n.dataset.layer===type).onclick();flush();};
+  const stroke=(id,a,b)=>{canvas.onpointerdown(touch(id,...a));canvas.onpointermove(touch(id,...b));canvas.onpointerup(touch(id,...b));flush();};
+  const saved=()=>{ids.get('save').onclick();flush();return JSON.parse(storage.get('gravship-designs-v1'))[0].state;};
+  canvas.onpointerdown(touch(1,0,0));flush();assert.equal(ids.get('engine-count').textContent,'0 / 1');canvas.onpointerup(touch(1,3,3));flush();assert.deepEqual(saved().engine,{x:3,y:3});assert.equal(ids.get('selection-name').textContent,'Grav engine');
+  choose('floor');stroke(2,[5,5],[8,5]);assert.equal(saved().floor.length,4);assert.equal(ids.get('select-mode').attributes['aria-pressed'],false);
+  choose('extender');stroke(3,[10,0],[12,1]);assert.deepEqual(saved().extenders,[{x:12,y:1}]);assert.equal(ids.get('selection-name').textContent,'Field extender');
+  stroke(4,[12,1],[13,2]);assert.deepEqual(saved().extenders,[{x:13,y:2}]);
+  ids.get('mod-chapter1').checked=true;ids.get('mod-chapter1').onchange();flush();choose('VGE_AstrofuelPipe');stroke(5,[13,5],[15,5]);
+  assert.equal(saved().components.length,3);assert.equal(ids.get('select-mode').attributes['aria-pressed'],false,'pipe painting stays active');
+});
+
+test('touch replacement selects the new component and fixed components can immediately be removed',()=>{
+  const {ids,nodes,storage,flush}=createEditor(),canvas=ids.get('canvas');
+  const touch=(id,x,y)=>({button:0,pointerId:id,pointerType:'touch',clientX:450+x*22+11,clientY:300+y*22+11,preventDefault(){}});
+  const choose=type=>{nodes.find(n=>n.dataset.layer===type).onclick();flush();};
+  const tap=(id,x,y)=>{canvas.onpointerdown(touch(id,x,y));canvas.onpointerup(touch(id,x,y));flush();};
+  const saved=()=>{ids.get('save').onclick();flush();return JSON.parse(storage.get('gravship-designs-v1'))[0].state;};
+  tap(1,0,0);choose('hull');tap(2,5,5);choose('autodoor');tap(3,5,5);assert.equal(ids.get('selection-name').textContent,'Autodoor');assert.ok(!saved().hull.includes('5,5'));
+  ids.get('rotate').onclick();flush();assert.equal(saved().components[0].rotation,1);
+  choose('heater');tap(4,8,8);assert.equal(ids.get('selection-name').textContent,'Heater');assert.equal(ids.get('rotation-controls').hidden,true);ids.get('remove-selected').onclick();flush();assert.equal(saved().components.length,1);assert.equal(saved().components[0].type,'autodoor');
+});
