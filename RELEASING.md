@@ -31,7 +31,7 @@ major version for incompatible changes.
 
 4. Deploy the static app to `rim-gravship-planner/` in the separate
    `mbesh/mbesh.github.io` repository. Include `version.js`, `mods.js`,
-   `mod-data.js`, `furniture.js`, `scenario.js`, `systems.js`, `systems-ui.js`, `assets/mods/`, and `assets/furniture/` alongside the existing HTML, CSS, JavaScript,
+   `mod-data.js`, `furniture.js`, `production.js`, `scenario.js`, `systems.js`, `systems-ui.js`, `assets/mods/`, `assets/furniture/`, and `assets/production/` alongside the existing HTML, CSS, JavaScript,
    and assets. A source-repository push alone does not
    update the live site. After the Pages deployment succeeds, verify the header
    version and drawing behavior on the live site.

@@ -12,7 +12,7 @@ import * as scenario from './scenario.js';
 import * as systems from './systems.js';
 import * as systemsUI from './systems-ui.js';
 
-function createEditor({deferHullTextures=false}={}){
+function createEditor({deferHullTextures=false,viewport=null}={}){
   const pendingHullImages=[],drawnText=[],drawnImages=[],drawnRects=[];
   const frameQueue=[],counters={frames:0,validation:0,fields:0,apply:0,placement:0,previewMove:0,move:0,libraryReads:0,clones:0};
   let frameId=0;
@@ -21,7 +21,7 @@ function createEditor({deferHullTextures=false}={}){
   const nodes=[],ids=new Map(),storage=new Map(),events={},requestedImages=[],hullCalls={topology:0,update:0,prepare:0,simple:0,diagonal:0};
   const trackHull=(name,fn)=>(...args)=>{hullCalls[name]++;return fn(...args);};
   class Element{
-    constructor(tag='div'){this.tagName=tag;this.dataset={};this.children=[];this.style={};this.attributes={};this.className='';this.value='';this.checked=true;this.hidden=false;this.classList={toggle:(c,on)=>{const set=new Set(this.className.split(' '));on?set.add(c):set.delete(c);this.className=[...set].join(' ');},add:()=>{},remove:()=>{}};nodes.push(this);}
+    constructor(tag='div'){this.tagName=tag;this.dataset={};this.children=[];this.style={};this.attributes={};this.className='';this.value='';this.checked=true;this.hidden=false;this.scrollTop=0;this.classList={toggle:(c,on)=>{const set=new Set(this.className.split(' '));on?set.add(c):set.delete(c);this.className=[...set].join(' ');},contains:c=>this.className.split(' ').includes(c),add:c=>this.classList.toggle(c,true),remove:c=>this.classList.toggle(c,false)};nodes.push(this);}
     set innerHTML(value){this.html=value;this.children=[];for(const tag of ['strong','small','img']){if(value.includes('<'+tag)){const e=new Element(tag);e.textContent=value.match(new RegExp('<'+tag+'[^>]*>([^<]*)'))?.[1]||'';this.append(e);}}if(value.includes('component-quantity')){const q=new Element('span');q.className='component-quantity';this.append(q);}}
     get innerHTML(){return this.html||'';}
     append(...children){this.children.push(...children);}
@@ -30,7 +30,7 @@ function createEditor({deferHullTextures=false}={}){
     querySelector(q){return this.children.find(c=>q.startsWith('.')?c.className?.split(' ').includes(q.slice(1)):c.tagName===q);}
     matches(q){return q.split(',').includes(this.tagName);}
     getBoundingClientRect(){return {left:0,top:0,width:900,height:600};}
-    focus(){} setPointerCapture(){} addEventListener(){} showModal(){this.open=true;}close(){this.open=false;}
+    focus(){document.activeElement=this;this.onfocus?.();} blur(){if(document.activeElement===this)document.activeElement=null;} setPointerCapture(){} addEventListener(){} showModal(){this.open=true;}close(){this.open=false;}
   }
   const html=readFileSync('index.html','utf8');
   for(const match of html.matchAll(/<([\w-]+)[^>]*\bid="([^"]+)"[^>]*>/g)){const el=new Element(match[1]);el.id=match[2];ids.set(el.id,el);}
@@ -40,6 +40,13 @@ function createEditor({deferHullTextures=false}={}){
   const queryAll=q=>q==='[data-layer]'?nodes.filter(n=>n.dataset.layer):q==='[data-shape]'?nodes.filter(n=>n.dataset.shape):q==='.component-item'?nodes.filter(n=>n.className.split(' ').includes('component-item')):q==='.component-group'?nodes.filter(n=>n.className==='component-group'):[];
   const document={getElementById:id=>{assert.ok(ids.has(id),`Missing element ${id}`);return ids.get(id);},createElement:t=>new Element(t),createTextNode:text=>({textContent:text}),querySelectorAll:queryAll,querySelector:q=>q==='dialog[open]'?[...ids.values()].find(n=>n.tagName==='dialog'&&n.open):null};
   const window={devicePixelRatio:1,addEventListener:(type,fn)=>events[type]=fn,requestAnimationFrame:fn=>{frameQueue.push(fn);return ++frameId;}};
+  const viewportEvents={},cssProperties=new Map(),media={matches:!!viewport,addEventListener(){}};
+  if(viewport){
+    document.documentElement={style:{setProperty:(name,value)=>cssProperties.set(name,value)}};
+    window.innerWidth=390;window.innerHeight=844;window.matchMedia=()=>media;
+    window.visualViewport={...viewport,addEventListener:(type,fn)=>viewportEvents[type]=fn};
+    const summary=new Element('summary');summary.getBoundingClientRect=()=>({height:44});ids.get('palette-panel').append(summary);
+  }
   const sandbox={...model,...catalogue,...hull,...measurements,...release,...mods,...scenario,...systems,...systemsUI,document,window,localStorage:{getItem:k=>{if(k==='gravship-designs-v1')counters.libraryReads++;return storage.get(k)||null;},setItem:(k,v)=>storage.set(k,v)},structuredClone:value=>{counters.clones++;return structuredClone(value);},crypto:{randomUUID:()=> 'test-design'},console,OffscreenCanvas:class{constructor(w,h){this.width=w;this.height=h;}getContext(){return {drawImage(){},getImageData:(x,y,w,h)=>({data:new Uint8ClampedArray(w*h*4)}),putImageData(){}};}},Image:class{set src(value){this.srcValue=value;const data=readFileSync(value);if(value.endsWith('.png')){this.width=data.readUInt32BE(16);this.height=data.readUInt32BE(20);}else{this.width=64;this.height=64;}if(deferHullTextures&&value.startsWith('assets/hull-prepared/'))pendingHullImages.push(()=>this.onload?.());else this.onload?.();}},ResizeObserver:class{observe(){}},setTimeout:()=>0,clearTimeout:()=>{}};
   for(const [name,fn] of [['topology','hullTopology'],['update','updateHullTopology'],['prepare','prepareHullTexture'],['simple','drawSimpleHull'],['diagonal','drawHull']])sandbox[fn]=trackHull(name,hull[fn]);
   for(const [name,fn] of [['validation','validate'],['fields','fieldCells'],['apply','apply'],['placement','checkPlacement'],['previewMove','previewMove'],['move','moveItem']])sandbox[fn]=(...args)=>{counters[name]++;return model[fn](...args);};
@@ -48,13 +55,33 @@ function createEditor({deferHullTextures=false}={}){
   const source=readFileSync('app.js','utf8').replace(/^import .+;\r?\n/gm,'');
   vm.runInNewContext(source,sandbox,{filename:'app.js'});
   flush();
-  return {nodes,ids,storage,events,drawnText,drawnImages,drawnRects,requestedImages,hullCalls,queryAll,flush,counters,pendingFrames:()=>frameQueue.length,finishHullImages:()=>{for(const load of pendingHullImages.splice(0))load();flush();}};
+  return {nodes,ids,storage,events,document,window,viewportEvents,cssProperties,media,drawnText,drawnImages,drawnRects,requestedImages,hullCalls,queryAll,flush,counters,pendingFrames:()=>frameQueue.length,finishHullImages:()=>{for(const load of pendingHullImages.splice(0))load();flush();}};
 }
+
+test('mobile search stays within the visual viewport through keyboard resize and pan, and restores the palette on close',()=>{
+  const {ids,document,window,viewportEvents,cssProperties,media,counters}=createEditor({viewport:{width:390,height:750,offsetTop:0,offsetLeft:0}});
+  const panel=ids.get('palette-panel'),input=ids.get('component-search');
+  panel.open=true;panel.scrollTop=200;
+  panel.getBoundingClientRect=()=>({top:50,bottom:400});
+  input.getBoundingClientRect=()=>({top:120-panel.scrollTop,bottom:164-panel.scrollTop});
+  input.focus();assert.equal(panel.classList.contains('searching'),true);
+  assert.equal(panel.scrollTop,14,'input clears the sticky palette heading');
+  Object.assign(window.visualViewport,{height:320,offsetTop:38,offsetLeft:5});viewportEvents.resize();viewportEvents.scroll();
+  assert.equal(cssProperties.get('--app-height'),'320px');assert.equal(cssProperties.get('--viewport-top'),'38px');
+  assert.equal(cssProperties.get('--viewport-left'),'5px');assert.equal(cssProperties.get('--viewport-width'),'390px');
+  panel.scrollTop=180;input.value='bed';input.oninput();assert.equal(panel.scrollTop,14,'filtering keeps the input visible');
+  input.blur();assert.equal(panel.classList.contains('searching'),true,'retain result positions between blur and the result click');
+  input.focus();panel.open=false;panel.ontoggle();assert.equal(panel.classList.contains('searching'),false);assert.equal(document.activeElement,null);
+  window.visualViewport=null;window.innerHeight=360;window.innerWidth=844;
+  panel.open=true;input.focus();assert.equal(cssProperties.get('--app-height'),'360px');assert.equal(cssProperties.get('--viewport-top'),'0px');assert.equal(cssProperties.get('--viewport-width'),'844px','window dimensions are the fallback without VisualViewport');
+  panel.open=true;input.focus();media.matches=false;viewportEvents.resize();assert.equal(panel.classList.contains('searching'),false,'desktop restores the floating palette');
+  assert.equal(counters.apply,0,'search and keyboard events never edit the design');
+});
 
 test('editor boots and supports palette, Q/E/buttons, placement, undo/redo and local save',()=>{
   const {nodes,ids,storage,events,requestedImages,hullCalls,queryAll,flush}=createEditor();
   const action=fn=>{fn();flush();};
-  assert.equal(queryAll('.component-item').filter(n=>!n.hidden).length,78);
+  assert.equal(queryAll('.component-item').filter(n=>!n.hidden).length,119);
   assert.equal(ids.get('app-version').textContent,`v${release.APP_VERSION}`);
   assert.equal(ids.get('diagonal-hull').checked,true);
   assert.equal(hullCalls.topology,1);assert.equal(hullCalls.prepare,0);assert.ok(hullCalls.diagonal>0);
@@ -132,17 +159,17 @@ test('mod toggles enforce dependencies, update engine/rotation UI, preserve desi
   const saved=()=>{action(()=>ids.get('save').onclick());return JSON.parse(storage.get('gravship-designs-v1'))[0].state;};
   assert.equal(ids.get('mod-chapter1').checked,false);assert.equal(ids.get('mod-chapter2').checked,false);
   assert.equal(requestedImages.some(p=>p.startsWith('assets/mods/')),false,'disabled mods do not load component artwork');
-  toggle('mod-chapter1',true);assert.equal(queryAll('.component-item').filter(n=>!n.hidden).length,155);
+  toggle('mod-chapter1',true);assert.equal(queryAll('.component-item').filter(n=>!n.hidden).length,196);
   assert.equal(ids.get('engine-type').children.length,3);assert.equal(ids.get('capacity-note').textContent,'Place an engine to support 250 tiles.');
   assert.equal(nodes.find(n=>n.dataset.layer==='small-tank').querySelector('strong').textContent,'Small astrofuel tank');
   assert.equal(requestedImages.some(p=>p.startsWith('assets/mods/chapter2/')),false);
-  toggle('mod-chapter2',true);assert.equal(ids.get('mod-chapter1').checked,true);assert.equal(queryAll('.component-item').filter(n=>!n.hidden).length,187);
+  toggle('mod-chapter2',true);assert.equal(ids.get('mod-chapter1').checked,true);assert.equal(queryAll('.component-item').filter(n=>!n.hidden).length,228);
   action(()=>{ids.get('engine-type').value='VGE_GravhulkEngine';ids.get('engine-type').onchange();});click(0,0);
   assert.equal(ids.get('capacity').textContent,'500');assert.equal(ids.get('engine-radius').textContent,23.9);assert.equal(ids.get('extender-count').textContent,'0 / 10');
   select('fuel-optimizer');assert.equal(ids.get('rotate').disabled,false);
   action(()=>events.keydown({key:'e',target:ids.get('canvas'),preventDefault(){}}));assert.equal(ids.get('rotation-label').textContent,'West');click(5,5);
   select('VGE_Warcomputer');click(8,5);const before=saved();assert.equal(before.components.length,2);assert.equal(before.components[0].rotation,1);
-  toggle('mod-chapter1',false);assert.equal(ids.get('mod-chapter2').checked,false);assert.equal(queryAll('.component-item').filter(n=>!n.hidden).length,78);
+  toggle('mod-chapter1',false);assert.equal(ids.get('mod-chapter2').checked,false);assert.equal(queryAll('.component-item').filter(n=>!n.hidden).length,119);
   assert.equal(saved().components.length,2,'disabling mods preserves placed components');
   action(()=>ids.get('undo').onclick());assert.equal(ids.get('mod-chapter2').checked,true);assert.equal(ids.get('engine-type').value,'VGE_GravhulkEngine');
   saved();action(()=>ids.get('new').onclick());action(()=>ids.get('accept-confirm').onclick());
@@ -552,6 +579,31 @@ test('furniture is searchable by category and DLC and paints a rotated table wit
   ids.get('redo').onclick();flush();assert.equal(ids.get('component-count').textContent,1);
 });
 
+
+test('production search, default facing, touch rotation and movement persist through undo and local saves',()=>{
+  const {ids,nodes,requestedImages,storage,flush}=createEditor(),canvas=ids.get('canvas');
+  const choose=id=>{nodes.find(n=>n.dataset.layer===id).onclick();flush();};
+  const touch=(id,x,y)=>({button:0,pointerId:id,pointerType:'touch',clientX:450+x*22+11,clientY:300+y*22+11,preventDefault(){}});
+  const drop=(id,x,y)=>{canvas.onpointerdown(touch(id,x-1,y));canvas.onpointermove(touch(id,x,y));canvas.onpointerup(touch(id,x,y));flush();};
+  const saved=()=>{ids.get('save').onclick();flush();return JSON.parse(storage.get('gravship-designs-v1'))[0].state;};
+  assert.equal(requestedImages.some(file=>file.startsWith('assets/production/')),false,'production artwork loads only when needed');
+  ids.get('component-search').value='Production';ids.get('component-search').oninput();
+  assert.equal(nodes.filter(n=>n.className.split(' ').includes('component-item')&&!n.hidden).length,41);
+  ids.get('component-search').value='Anomaly';ids.get('component-search').oninput();
+  assert.ok(!nodes.find(n=>n.dataset.layer==='serum-lab').hidden);
+  assert.ok(nodes.find(n=>n.dataset.layer==='bioferrite-shaper').querySelector('small').textContent.includes('Anomaly'));
+  ids.get('component-search').value='';ids.get('component-search').oninput();drop(1,0,0);
+  choose('hydroponics-basin');assert.equal(ids.get('rotation-label').textContent,'North');drop(2,4,4);
+  let s=saved();assert.deepEqual(s.components[0],{type:'hydroponics-basin',x:4,y:4,rotation:2});
+  assert.equal(ids.get('selection-name').textContent,'Hydroponics basin');assert.ok(requestedImages.includes('assets/production/Hydroponics_basin_north.png'));
+  ids.get('rotate').onclick();flush();s=saved();assert.equal(s.components[0].rotation,3);
+  const p=s.components[0];canvas.onpointerdown(touch(3,p.x,p.y));canvas.onpointermove(touch(3,p.x+2,p.y+1));canvas.onpointerup(touch(3,p.x+2,p.y+1));flush();
+  s=saved();assert.equal(s.components[0].x,p.x+2);assert.equal(s.components[0].y,p.y+1);
+  ids.get('remove-selected').onclick();flush();assert.equal(saved().components.length,0);
+  ids.get('undo').onclick();flush();assert.deepEqual(saved(),s);
+  choose('serum-lab');assert.equal(ids.get('rotation-label').textContent,'North');drop(4,-6,4);assert.equal(saved().components[1].type,'serum-lab');
+  choose('fermenting-barrel');assert.equal(ids.get('rotate').disabled,true);
+});
 
 test('touch component placement previews until release, then stays selected for rotation and another move',()=>{
   const {ids,nodes,storage,flush,counters}=createEditor(),canvas=ids.get('canvas');

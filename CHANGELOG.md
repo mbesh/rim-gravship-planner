@@ -1,5 +1,13 @@
 # Release notes
 
+## 1.1.0 — 2026-11-25
+
+- Add 41 placeable Production items: all 26 base-game production buildings, tool cabinets and multi-analyzers, ten Biotech production/support machines, and three Anomaly production machines.
+- Include original wiki artwork, available directional variants, DLC labels, search, full-footprint placement, rotation, moving, removal, Undo/Redo, and browser save/load. Load production canvas artwork on demand and choose an available original facing for initial placement.
+- Keep mobile component search visible above the keyboard by anchoring the palette to the visual viewport during search. Follow viewport resize and scroll, preserve result positions through blur, and dismiss search focus when the palette closes.
+- Document production scope, footprints, artwork sources and hashes, and simulation limits. Production rates, facility connections, interaction-cell access, and electricity consumption are not simulated.
+- Validate with 147 automated tests and desktop/mobile Chromium checks for all 41 production items and 58 referenced images, touch placement and rotation, movement, removal, Undo/Redo, save/reload, DLC search, and simulated keyboard viewport changes. Physical-device iPhone Chrome/Safari verification and more thorough in-game testing of Vanilla Gravship Expanded support remain outstanding.
+
 ## 1.0.10 — 2026-11-25
 
 - Drag component previews with touch and release to place them. Keep newly placed components selected for immediate rotation, movement, or removal, including engines and field extenders.

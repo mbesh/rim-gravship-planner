@@ -106,3 +106,13 @@ At 390 × 844, a pinch changed zoom from **100% to 157%** while the saved design
 `npm test` passed **111 tests**, including five new regression tests for gesture rollback/history, Pan, pointer ownership/cancellation, first-save naming, and category search/shape selection. `npm run check:version` and `git diff --check` passed.
 
 Temporary browser verification artifacts are in `node_modules/.mobile-ux-2026-11-24/fixes/verification.json` and the screenshots alongside it. They are ignored by Git. Browser emulation still does not replace physical Safari/Android keyboard and safe-area testing. No commit, release, or deployment was performed.
+
+## Mobile search keyboard follow-up — 2026-11-25
+
+A user reported that Chrome on iPhone hid the search field while the keyboard was open. The palette was positioned within the board's clipped area: reducing the visible viewport height shortened the board, while browser scrolling left the focused field outside that area. Keyboard behavior can resize and pan the visual viewport independently of the layout viewport; see [Chrome's viewport resize documentation](https://developer.chrome.com/blog/viewport-resize-behavior).
+
+Focusing mobile component search now anchors the palette to the visual viewport, with its size and position updated on viewport resize and scroll. The search field stays below the sticky palette heading. The panel retains its position through input blur so tapping a result does not move that result before the click; closing the palette restores its usual placement and blurs the field to dismiss the keyboard. Desktop browsing retains the normal floating palette.
+
+Controlled Chromium checks reproduced the old clipping at 390 × 844: with a 320px visible viewport and a 90px viewport offset, the palette ended at y=101 while the focused search field began at y=293. The fixed palette occupied y=102–398 and the field y=159–203. Checks passed at 360 × 640, 390 × 844, 844 × 390, and 768 × 1024, including viewport panning, filtering, no results, tapping a result, closing/reopening the palette, and no horizontal overflow. Desktop 1440 × 900 kept its usual palette. These checks simulated keyboard viewport geometry; they did not open a physical iPhone keyboard.
+
+All 141 automated tests passed, including regression coverage for focus, keyboard resize/pan events, result filtering, close/blur behavior, desktop restoration, and the fallback without VisualViewport. Ignored browser artifacts are in `node_modules/.mobile-search-keyboard-baseline/` and `node_modules/.mobile-search-keyboard-fixed/`. Physical iPhone Chrome verification remains pending.

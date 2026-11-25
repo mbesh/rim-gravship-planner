@@ -28,6 +28,7 @@ The build palette floats over the upper-left grid corner; click its heading to c
 - Add tanks, thrusters, a pilot console, upgrades, life-support equipment, autodoors, and solar generators. The palette shows footprints and stated component limits, with links to the wiki. Solar generators are fixed 4 × 4 components under Power and need 16 supporting substructure tiles.
 - Power also includes wood-fired and chemfuel generators, wind turbines, geothermal generators, watermills, and vanometric power cells. Their wiki footprints and operating requirements appear in the palette; terrain and wind clearance are not simulated. With mods enabled, gravship capacitors appear in Power.
 - Furniture includes 57 base-game and official DLC items: beds and sleeping spots, animal beds, tables, seating and thrones, storage, lighting, children's furniture, outfit stands, and decorations. Required DLCs appear in the palette and descriptions; all are available for planning independently of the mod toggles. Search by item, category or DLC name. Rotatable items use Q/E or the visible rotation controls. Wall lamps and wall torches share a hull tile and require that mount. Furniture uses the standard placement, move, erase, and local-save controls. Materials, comfort, light coverage and furniture power consumption are not simulated.
+- Production includes 41 workstations and supporting facilities: the base-game crafting, cooking, research, refining, and hydroponics buildings, plus Biotech gene/mech/subcore production and Anomaly bioferrite/serum equipment. Required DLCs appear in search and descriptions. Use the standard placement, rotation, move, removal, Undo/Redo, and browser-save controls. Production rates, recipes, interaction-cell access, facility links, and power consumption are not simulated. See the [production catalog](PRODUCTION.md).
 - Watch design checks for missing foundations, disconnected substructure, unsupported tiles, blocked thruster clearance, and invalid pump placement.
 - Plan tiles and components outside the grav field: these placements are allowed and marked red while validation highlights are enabled. Field warnings also apply when moving or rotating components. Unlinked extenders and inactive mod field generators do not expand the supported area or capacity; collision, mounting, component limits, and substructure capacity rules still apply.
 - Place structures before laying their substructure, including on subscaffold. Missing foundation tiles are marked red until you add substructure underneath. Placement, movement, and rotation remain available; oxygen pumps still need a hull mount.
@@ -110,6 +111,7 @@ The header displays the release version from `package.json`, starting with **1.0
 - `model.js`: ship state, drawing geometry, placement rules, validation, and movement.
 - `components.js`: component catalogue, footprints, rotations, artwork, and exhaust areas.
 - `furniture.js`: base-game and official DLC furniture footprints, rotation and artwork references.
+- `production.js`: production workstations and supporting facilities, including official DLC additions.
 - `mods.js`, `mod-data.js`: mod dependency settings, engine profiles, imported components, and vanilla overrides.
 - `tools/import-mods.py`: optional regeneration from the official mod source checkouts.
 - `hull.js`: floor-aware hull corner selection, incremental layout updates, texture-preparation rules, and tile rendering.
@@ -122,5 +124,7 @@ The header displays the release version from `package.json`, starting with **1.0
 Unofficial fan project; not affiliated with Ludeon Studios. RimWorld artwork remains the property of its respective owners. Component images come from the [RimWorld Wiki](https://rimworldwiki.com/wiki/Gravship); the additional base-game power artwork has [source URLs and hashes](assets/power-sources.json). The cleaned east-facing vac barrier was derived from an in-game screenshot with AI-assisted background removal. The oxygen pump uses a custom schematic marker.
 
 Furniture artwork comes from the [wiki furniture list](https://rimworldwiki.com/wiki/Furniture) and linked item pages, with [source URLs and hashes](assets/furniture/sources.json). One representative material or sculpture design is shown per item.
+
+Production artwork comes from the [wiki production list](https://rimworldwiki.com/wiki/Production) and linked item/DLC pages, with [source URLs and hashes](assets/production/sources.json). Available directional images retain their facing; other orientations use rotated artwork. The initial placement uses an available original facing.
 
 Vanilla Gravship Expanded artwork and data are credited to the Vanilla Expanded team. See [mod artwork attribution](assets/mods/NOTICE.md) for sources and licensing.
