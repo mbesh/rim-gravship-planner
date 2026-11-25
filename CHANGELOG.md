@@ -1,5 +1,11 @@
 # Release notes
 
+## 1.0.8 — 2026-11-24
+
+- Group all mod thrusters under Flight, including the giant astrofuel thruster and small, large, and giant electric thrusters.
+- Preserve chapter availability, search, vanilla grouping, and Undo/Redo behavior.
+- Validate with 131 automated tests and desktop/mobile browser checks for both mod chapters. More thorough in-game verification of Vanilla Gravship Expanded support remains outstanding.
+
 ## 1.0.7 — 2026-11-24
 
 - Add wood-fired and chemfuel generators, wind turbines, geothermal generators, watermills, and vanometric power cells to Power, using wiki footprints and original artwork. Keep the ship reactor excluded.
