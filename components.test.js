@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {FURNITURE} from './furniture.js';
 import assert from 'node:assert/strict';
 import {existsSync,readFileSync} from 'node:fs';
 import {COMPONENTS as ALL_COMPONENTS,componentDefinition,componentBounds,componentCells,componentSprite,componentVisual,barrierJoins,exhaustCells,pumpMount} from './components.js';
@@ -7,8 +8,8 @@ import {blank,apply,validate,sanitize,hitItem,itemPosition,moveItem,rotateItem} 
 const engine=()=>apply(blank(),'engine',['0,0']).state;
 test('component catalogue has wiki footprints and maximum counts',()=>{
   const expected={'autodoor':[1,1,undefined],'small-tank':[2,2,undefined],'large-tank':[3,3,undefined],'small-thruster':[1,2,4],'large-thruster':[2,2,6],'pilot-console':[3,2,undefined],'signal-jammer':[2,2,undefined],'power-cell':[1,1,undefined],'fuel-optimizer':[2,2,2],'shield-generator':[3,3,2],'subpersona-core':[1,1,2],'oxygen-pump':[1,1,undefined],'vac-barrier':[1,1,undefined],'heater':[1,1,undefined],'solar-generator':[4,4,undefined],'wood-fired-generator':[2,2,undefined],'chemfuel-generator':[2,2,undefined],'wind-turbine':[7,2,undefined],'geothermal-generator':[6,6,undefined],'watermill-generator':[5,6,undefined],'vanometric-power-cell':[1,2,undefined]};
-  assert.equal(COMPONENTS.length,21);
-  for(const c of COMPONENTS)assert.deepEqual([c.width,c.height,c.limit],expected[c.id],c.id);
+  assert.equal(COMPONENTS.length,21+FURNITURE.length);
+  for(const c of COMPONENTS.filter(c=>c.group!=='Furniture'))assert.deepEqual([c.width,c.height,c.limit],expected[c.id],c.id);
 });
 test('all catalogue sprites exist and downloaded images are actual PNGs',()=>{
   for(const c of COMPONENTS)for(let rotation=0;rotation<4;rotation++){

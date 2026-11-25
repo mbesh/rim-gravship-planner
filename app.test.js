@@ -54,7 +54,7 @@ function createEditor({deferHullTextures=false}={}){
 test('editor boots and supports palette, Q/E/buttons, placement, undo/redo and local save',()=>{
   const {nodes,ids,storage,events,requestedImages,hullCalls,queryAll,flush}=createEditor();
   const action=fn=>{fn();flush();};
-  assert.equal(queryAll('.component-item').filter(n=>!n.hidden).length,21);
+  assert.equal(queryAll('.component-item').filter(n=>!n.hidden).length,78);
   assert.equal(ids.get('app-version').textContent,`v${release.APP_VERSION}`);
   assert.equal(ids.get('diagonal-hull').checked,true);
   assert.equal(hullCalls.topology,1);assert.equal(hullCalls.prepare,0);assert.ok(hullCalls.diagonal>0);
@@ -132,17 +132,17 @@ test('mod toggles enforce dependencies, update engine/rotation UI, preserve desi
   const saved=()=>{action(()=>ids.get('save').onclick());return JSON.parse(storage.get('gravship-designs-v1'))[0].state;};
   assert.equal(ids.get('mod-chapter1').checked,false);assert.equal(ids.get('mod-chapter2').checked,false);
   assert.equal(requestedImages.some(p=>p.startsWith('assets/mods/')),false,'disabled mods do not load component artwork');
-  toggle('mod-chapter1',true);assert.equal(queryAll('.component-item').filter(n=>!n.hidden).length,98);
+  toggle('mod-chapter1',true);assert.equal(queryAll('.component-item').filter(n=>!n.hidden).length,155);
   assert.equal(ids.get('engine-type').children.length,3);assert.equal(ids.get('capacity-note').textContent,'Place an engine to support 250 tiles.');
   assert.equal(nodes.find(n=>n.dataset.layer==='small-tank').querySelector('strong').textContent,'Small astrofuel tank');
   assert.equal(requestedImages.some(p=>p.startsWith('assets/mods/chapter2/')),false);
-  toggle('mod-chapter2',true);assert.equal(ids.get('mod-chapter1').checked,true);assert.equal(queryAll('.component-item').filter(n=>!n.hidden).length,130);
+  toggle('mod-chapter2',true);assert.equal(ids.get('mod-chapter1').checked,true);assert.equal(queryAll('.component-item').filter(n=>!n.hidden).length,187);
   action(()=>{ids.get('engine-type').value='VGE_GravhulkEngine';ids.get('engine-type').onchange();});click(0,0);
   assert.equal(ids.get('capacity').textContent,'500');assert.equal(ids.get('engine-radius').textContent,23.9);assert.equal(ids.get('extender-count').textContent,'0 / 10');
   select('fuel-optimizer');assert.equal(ids.get('rotate').disabled,false);
   action(()=>events.keydown({key:'e',target:ids.get('canvas'),preventDefault(){}}));assert.equal(ids.get('rotation-label').textContent,'West');click(5,5);
   select('VGE_Warcomputer');click(8,5);const before=saved();assert.equal(before.components.length,2);assert.equal(before.components[0].rotation,1);
-  toggle('mod-chapter1',false);assert.equal(ids.get('mod-chapter2').checked,false);assert.equal(queryAll('.component-item').filter(n=>!n.hidden).length,21);
+  toggle('mod-chapter1',false);assert.equal(ids.get('mod-chapter2').checked,false);assert.equal(queryAll('.component-item').filter(n=>!n.hidden).length,78);
   assert.equal(saved().components.length,2,'disabling mods preserves placed components');
   action(()=>ids.get('undo').onclick());assert.equal(ids.get('mod-chapter2').checked,true);assert.equal(ids.get('engine-type').value,'VGE_GravhulkEngine');
   saved();action(()=>ids.get('new').onclick());action(()=>ids.get('accept-confirm').onclick());
@@ -530,4 +530,24 @@ test('normal and hidden astrofuel sprites share cardinal links and never connect
   for(const crop of [[tw*3,th*3,tw,th],[0,th,tw,th],[0,0,tw,th]])assert.ok(crops.some(c=>JSON.stringify(c)===JSON.stringify(crop)),JSON.stringify(crop));
   assert.equal(crops.filter(c=>JSON.stringify(c)===JSON.stringify([0,th*3,tw,th])).length,2,'a diagonal-only pair uses two disconnected sprites');
   assert.equal(requestedImages.length,imageCount,'both variants reuse the loaded atlas');
+});
+
+
+test('furniture is searchable by category and DLC and paints a rotated table with deferred artwork and undo',()=>{
+  const {ids,nodes,requestedImages,storage,flush}=createEditor(),canvas=ids.get('canvas');
+  const choose=id=>{nodes.find(n=>n.dataset.layer===id).onclick();flush();};
+  const pointer=(x,y)=>({button:0,pointerId:1,clientX:450+x*22+11,clientY:300+y*22+11,preventDefault(){}});
+  const click=(x,y)=>{canvas.onpointerdown(pointer(x,y));canvas.onpointerup(pointer(x,y));flush();};
+  const search=query=>{ids.get('component-search').value=query;ids.get('component-search').oninput();};
+  const visible=()=>nodes.filter(n=>n.className.split(' ').includes('component-item')&&!n.hidden);
+  assert.equal(requestedImages.some(file=>file.startsWith('assets/furniture/')),false,'furniture artwork is deferred until needed');
+  search('Furniture');assert.equal(visible().length,57);
+  search('Biotech');assert.ok(visible().some(n=>n.dataset.layer==='kid-outfit-stand'));assert.ok(visible().some(n=>n.dataset.layer==='crib'));
+  assert.ok(nodes.find(n=>n.dataset.layer==='kid-outfit-stand').querySelector('small').textContent.includes('Odyssey + Biotech'));
+  search('');click(0,0);choose('table-2x4');ids.get('rotate').onclick();flush();click(4,4);
+  ids.get('save').onclick();flush();let saved=JSON.parse(storage.get('gravship-designs-v1'))[0].state;
+  assert.equal(saved.components[0].type,'table-2x4');assert.equal(saved.components[0].rotation,1);assert.equal(catalogue.componentCells(saved.components[0]).length,8);
+  assert.ok(requestedImages.includes('assets/furniture/Table_(2x4)_east.png'));
+  ids.get('undo').onclick();flush();assert.equal(ids.get('component-count').textContent,0);
+  ids.get('redo').onclick();flush();assert.equal(ids.get('component-count').textContent,1);
 });

@@ -13,11 +13,11 @@ const put=(s,type,cell,rotation=0)=>{const r=apply(s,type,[cell],false,rotation)
 
 test('chapters gate the complete catalog, with Chapter 2 requiring Chapter 1',()=>{
   assert.deepEqual(normalizeMods({chapter2:true}),{chapter1:true,chapter2:true});
-  assert.equal(availableComponents(blank()).length,21);
+  assert.equal(availableComponents(blank()).length,78);
   assert.equal(MOD_COMPONENTS.length,109);
   const c1=design(),c2=design('standard',true);
   assert.equal(availableComponents(c1).filter(c=>c.chapter===2).length,0);
-  assert.equal(availableComponents(c2).length,130);
+  assert.equal(availableComponents(c2).length,187);
   assert.equal(apply(blank(),'VGE_SmallHeatsink',['5,5']).rejected,1);
   assert.equal(apply(c1,'VGE_SmallElectricThruster',['5,5']).rejected,1);
   assert.equal(put(c2,'VGE_SmallElectricThruster','5,5').components.length,1);

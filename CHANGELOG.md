@@ -1,5 +1,13 @@
 # Release notes
 
+## 1.0.9 — 2026-11-24
+
+- Add 57 placeable furniture types under Furniture: 36 base-game items and 21 official DLC additions, including beds, tables, seating, thrones, storage, lighting, children's furniture, outfit stands, and decorations.
+- Show required DLCs in the palette and descriptions; search by item, category, or DLC. All furniture is available for planning independently of the mod chapter toggles.
+- Support full-footprint placement, rotation, movement, removal, Undo/Redo, and browser saves. Wall lamps and wall torches share hull tiles and require a mount.
+- Use original wiki artwork and available directional variants, with source URLs and hashes. Load furniture canvas artwork as needed and retain lazy palette icons.
+- Validate with 136 automated tests and desktop/mobile browser checks for all furniture artwork, DLC search, placement, rotation, wall mounting, movement, removal, Undo/Redo, and save/load. Physical-device Safari testing and more thorough in-game verification of Vanilla Gravship Expanded support remain outstanding.
+
 ## 1.0.8 — 2026-11-24
 
 - Group all mod thrusters under Flight, including the giant astrofuel thruster and small, large, and giant electric thrusters.
