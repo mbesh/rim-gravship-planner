@@ -1,5 +1,13 @@
 # Release notes
 
+## 1.2.0 — 2026-11-26
+
+- Add a universal Erase tool in the floating toolbar that works independently of the build palette. Its Components target preserves hull and substructure by default; choose Hull / doors, Substructure, or Everything for other layers.
+- Brush across mixed component types or use Filled rectangle and the other drawing shapes. Preview whole affected components and a removal count before release, then undo the completed drag as one action.
+- Include dependent extenders in engine-removal previews. Cancel on interrupted touch, a second finger, or tool changes without editing the design or adding history. Preserve desktop typed right-click erasure.
+- Keep controls reachable on small phones and landscape screens, hide Remove selected without a selection, and let Erase toggle back to the previous tool. Previewing does not clone or revalidate the design.
+- Validate with 158 automated tests and desktop/mobile Chromium checks across five layouts, including native mouse and touch input, all targets, rectangles, foundation preservation, save, Undo/Redo, and cancellation. Physical iPhone Chrome/Safari verification remains pending; Vanilla Gravship Expanded support still needs more thorough in-game testing.
+
 ## 1.1.1 — 2026-11-25
 
 - Fix a CSS specificity conflict that reduced component search text to 12px on phones. Keep mobile search at 16px before and during focus to address unwanted iPhone browser focus zoom.

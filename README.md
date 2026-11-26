@@ -41,7 +41,11 @@ Enable **Vanilla Gravship Expanded — Chapter 1** or **Chapter 2** under **Buil
 
 The mods add 109 placeable components, two engine variants, and subscaffold, using original mod artwork. See [mod rules and source notes](MOD_SUPPORT.md) and the [complete component catalog](MOD_CATALOG.md).
 
-Both astrofuel pipe types support click-and-drag painting and every drawing shape, including on mobile. Normal and hidden pipes connect to each other through tile edges; diagonal neighbors do not connect. Hidden pipes use faint linked artwork. Painting across existing fuel-network tiles preserves them; Erase removes only the selected pipe type. Each stroke can be undone as one action.
+Both astrofuel pipe types support click-and-drag painting and every drawing shape, including on mobile. Normal and hidden pipes connect to each other through tile edges; diagonal neighbors do not connect. Hidden pipes use faint linked artwork. Painting across existing fuel-network tiles preserves them. Desktop right-click removes only the selected pipe type; the universal Erase tool removes all matching components in its area. Each stroke can be undone as one action.
+
+Choose **Erase** in the floating toolbar without choosing a palette item. Its default **Components** target removes whole components, including engines, extenders, furniture, machines, and pipes, while preserving hull and substructure. **Hull / doors** removes hull tiles and doors but leaves mounted equipment; **Substructure** removes substructure and subscaffold while leaving structures; **Everything** clears all layers under the brush. Removing an engine also removes its extenders, which are included in the preview.
+
+Drag with **Single tile** to brush across items, or choose **Filled rectangle** to clear an area; the other drawing shapes also work. Touching any footprint tile includes the whole component. Highlighted items and a removal count preview the result before release. Cancel or begin a two-finger gesture to abandon the preview; each completed drag is one Undo action. Tap Erase again to return to the previous tool, or choose Select / move or a palette item. Erase targets are kept while using the editor and reset to Components when the app reloads.
 
 ## Ship systems
 
@@ -56,7 +60,9 @@ The inspector shows estimated electricity generation (including mod engine outpu
 | Draw a shape | Select a drawing tool, then drag between tiles |
 | Rotate before placing | Q / E or the rotation buttons |
 | Rotate a placed component | Select / move, tap the component, then use the arrows beside it, toolbar Rotate buttons, or Q / E |
-| Erase the active palette layer | Right-click an occupied tile, or choose Erase |
+| Erase across component types | Choose Erase, choose targets, then tap or drag; release to apply the preview |
+| Clear a rectangular area | Choose Erase and Filled rectangle, then drag across the area |
+| Erase the active palette layer | Right-click an occupied tile with the build tool active |
 | Deselect the build tool | Right-click empty space or press Escape |
 | Select and move | Choose Select / move, then drag a placed item |
 | Remove selected item | Remove selected button, Delete, or Backspace; Undo restores it |

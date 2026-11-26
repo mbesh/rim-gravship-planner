@@ -443,7 +443,7 @@ test('selected component removal preserves foundations, clears selection, and is
   const saved=()=>{ids.get('save').onclick();flush();return JSON.parse(storage.get('gravship-designs-v1'))[0].state;};
   click(0,0);choose('floor');click(4,4);click(4,5);choose('small-thruster');click(4,4);
   const before=saved();ids.get('select-mode').onclick();flush();
-  assert.equal(ids.get('remove-selected').disabled,true);assert.equal(ids.get('remove-selected').hidden,false);
+  assert.equal(ids.get('remove-selected').disabled,true);assert.equal(ids.get('remove-selected').hidden,true);
   click(4,5);assert.equal(ids.get('selection-name').textContent,'Small thruster');assert.equal(ids.get('remove-selected').disabled,false);
   ids.get('remove-selected').onclick();flush();let after=saved();
   assert.equal(after.components.length,0);assert.deepEqual(after.floor,before.floor);assert.deepEqual(after.engine,before.engine);
@@ -541,8 +541,73 @@ test('astrofuel pipe tools paint continuous runs and shapes, skip existing netwo
   canvas.onpointerup(pointer(10,6));flush();let design=saved();assert.equal(design.components.length,15);assert.equal(design.components.filter(c=>c.type==='VGE_HiddenAstrofuelPipe').length,6);
   assert.equal(design.components.find(c=>c.x===8&&c.y===4).type,'VGE_AstrofuelPipe','painting preserves an existing pipe variant');
   ids.get('undo').onclick();flush();assert.equal(saved().components.length,9);ids.get('redo').onclick();flush();assert.equal(saved().components.length,15);
-  ids.get('erase').onclick();stroke([8,4],[10,6]);assert.equal(saved().components.length,9,'shaped erase removes only the selected pipe type');
+  ids.get('erase').onclick();stroke([8,4],[10,6]);assert.equal(saved().components.length,6,'universal erase removes both pipe types in the shape');
   ids.get('add').onclick();choose('heater');assert.equal(ids.get('shape-picker').disabled,true,'ordinary buildings remain single-placement tools');
+});
+
+test('universal eraser previews a mixed-component brush, preserves foundations, and undoes the entire drag',()=>{
+  const {ids,nodes,storage,drawnRects,counters,flush}=createEditor(),canvas=ids.get('canvas');
+  const pointer=(x,y)=>({button:0,pointerId:1,clientX:450+x*22+11,clientY:300+y*22+11,preventDefault(){}});
+  const click=(x,y)=>{canvas.onpointerdown(pointer(x,y));canvas.onpointerup(pointer(x,y));flush();};
+  const choose=type=>{nodes.find(n=>n.dataset.layer===type).onclick();flush();};
+  const saved=()=>{ids.get('save').onclick();flush();return JSON.parse(storage.get('gravship-designs-v1'))[0].state;};
+  click(0,0);choose('floor');for(const p of [[5,4],[6,4],[8,4],[9,4]])click(...p);
+  choose('bed');ids.get('rotate').onclick();flush();click(5,4);choose('heater');click(8,4);choose('hull');click(9,4);
+  const before=saved();ids.get('select-mode').onclick();flush();assert.equal(ids.get('erase').disabled,false);
+  ids.get('erase').onclick();flush();assert.equal(ids.get('mode-label').textContent,'Erase components');assert.equal(ids.get('shape-picker').disabled,false);
+  assert.equal(ids.get('erase-target-control').hidden,false);assert.equal(ids.get('rotation-controls').hidden,true);
+  const work={validation:counters.validation,clones:counters.clones};
+  canvas.onpointerdown(pointer(6,4));canvas.onpointermove(pointer(9,4));flush();
+  assert.equal(ids.get('component-count').textContent,2,'preview does not mutate');assert.ok(ids.get('erase-status').textContent.startsWith('2 items'));
+  assert.ok(drawnRects.some(r=>r.color==='#e7907c66'));assert.equal(counters.validation,work.validation);assert.equal(counters.clones,work.clones);
+  canvas.onpointerup(pointer(9,4));flush();const after=saved();assert.equal(after.components.length,0);assert.deepEqual(after.floor,before.floor);assert.deepEqual(after.hull,before.hull);
+  ids.get('undo').onclick();flush();assert.deepEqual(saved(),before);ids.get('redo').onclick();flush();assert.deepEqual(saved(),after);
+  click(30,30);ids.get('undo').onclick();flush();assert.deepEqual(saved(),before,'empty strokes do not add undo entries');
+  ids.get('add').onclick();flush();assert.equal(ids.get('mode-label').textContent,'Place gravship hull','Add restores the last chosen build tool');
+});
+
+test('rectangle erase filters are independent of the build tool and use the final pointer-up position',()=>{
+  const {ids,nodes,storage,flush}=createEditor(),canvas=ids.get('canvas');
+  const pointer=(x,y)=>({button:0,pointerId:1,clientX:450+x*22+11,clientY:300+y*22+11,preventDefault(){}});
+  const click=(x,y)=>{canvas.onpointerdown(pointer(x,y));canvas.onpointerup(pointer(x,y));flush();};
+  const choose=type=>{nodes.find(n=>n.dataset.layer===type).onclick();flush();};
+  const saved=()=>{ids.get('save').onclick();flush();return JSON.parse(storage.get('gravship-designs-v1'))[0].state;};
+  const target=t=>{ids.get('erase-target').value=t;ids.get('erase-target').onchange();flush();};
+  const rectangle=()=>{canvas.onpointerdown(pointer(8,6));canvas.onpointermove(pointer(7,5));canvas.onpointerup(pointer(4,4));flush();};
+  click(0,0);choose('floor');for(const p of [[4,4],[4,5],[6,4],[8,4]])click(...p);
+  choose('bed');click(4,4);choose('heater');click(6,4);choose('hull');click(8,4);
+  const before=saved();choose('heater');ids.get('erase').onclick();nodes.find(n=>n.dataset.shape==='filled').onclick();flush();
+  assert.equal(ids.get('shape-picker').disabled,false);rectangle();assert.equal(saved().components.length,0);assert.deepEqual(saved().floor,before.floor);
+  ids.get('undo').onclick();flush();target('hull');rectangle();assert.equal(saved().hull.length,0);assert.deepEqual(saved().components,before.components);
+  ids.get('undo').onclick();flush();target('floor');rectangle();assert.equal(saved().floor.length,0);assert.deepEqual(saved().components,before.components);assert.deepEqual(saved().hull,before.hull);
+  ids.get('undo').onclick();flush();target('all');rectangle();const after=saved();assert.equal(after.components.length,0);assert.equal(after.floor.length,0);assert.equal(after.hull.length,0);assert.deepEqual(after.engine,before.engine);
+  ids.get('undo').onclick();flush();assert.deepEqual(saved(),before);
+  ids.get('erase').onclick();flush();assert.equal(ids.get('mode-label').textContent,'Place heater');assert.equal(ids.get('shape-picker').value,'single','leaving erase restores valid placement for a non-paintable component');
+});
+
+test('touch erasing cancels cleanly on a second finger, pointer cancellation, and changing erase tools',()=>{
+  const {ids,nodes,storage,flush}=createEditor(),canvas=ids.get('canvas');
+  const touch=(id,x,y)=>({button:0,pointerId:id,pointerType:'touch',clientX:450+x*22+11,clientY:300+y*22+11,preventDefault(){}});
+  const drop=(id,x,y)=>{canvas.onpointerdown(touch(id,x,y));canvas.onpointerup(touch(id,x,y));flush();};
+  const saved=()=>{ids.get('save').onclick();flush();return JSON.parse(storage.get('gravship-designs-v1'))[0].state;};
+  drop(1,0,0);nodes.find(n=>n.dataset.layer==='heater').onclick();drop(2,5,5);const before=saved();ids.get('erase').onclick();flush();
+  canvas.onpointerdown(touch(3,5,5));canvas.onpointercancel(touch(3,5,5));flush();assert.deepEqual(saved(),before);
+  canvas.onpointerdown(touch(4,5,5));canvas.onpointerdown(touch(5,8,5));canvas.onpointerup(touch(5,8,5));canvas.onpointermove(touch(4,5,5));canvas.onpointerup(touch(4,5,5));flush();assert.deepEqual(saved(),before);
+  canvas.onpointerdown(touch(6,5,5));ids.get('erase-target').value='all';ids.get('erase-target').onchange();canvas.onpointerup(touch(6,5,5));flush();assert.deepEqual(saved(),before);
+  canvas.onpointerdown(touch(7,5,5));nodes.find(n=>n.dataset.shape==='filled').onclick();canvas.onpointerup(touch(7,5,5));flush();assert.deepEqual(saved(),before);
+  ids.get('undo').onclick();flush();assert.equal(saved().components.length,0,'cancelled previews did not add history');
+});
+
+test('right-click keeps typed removal and pointer ownership prevents another pointer committing universal erase',()=>{
+  const {ids,nodes,storage,flush}=createEditor(),canvas=ids.get('canvas');
+  const p=(id,x,y,button=0)=>({button,pointerId:id,clientX:450+x*22+11,clientY:300+y*22+11,preventDefault(){}});
+  const click=(x,y,button=0)=>{canvas.onpointerdown(p(1,x,y,button));canvas.onpointerup(p(1,x,y,button));flush();};
+  const choose=type=>{nodes.find(n=>n.dataset.layer===type).onclick();flush();};
+  const saved=()=>{ids.get('save').onclick();flush();return JSON.parse(storage.get('gravship-designs-v1'))[0].state;};
+  click(0,0);choose('heater');click(4,4);choose('bed');click(7,4);click(4,4,2);assert.equal(saved().components.length,2,'a bed right-click leaves heaters alone');
+  click(7,4,2);assert.deepEqual(saved().components.map(c=>c.type),['heater']);
+  ids.get('erase').onclick();flush();canvas.onpointerdown(p(2,4,4));canvas.onpointerup(p(3,4,4));flush();assert.equal(ids.get('component-count').textContent,1);
+  canvas.onpointerup(p(2,4,4));flush();assert.equal(saved().components.length,0);
 });
 
 test('normal and hidden astrofuel sprites share cardinal links and never connect diagonally',()=>{
