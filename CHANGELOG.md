@@ -1,5 +1,11 @@
 # Release notes
 
+## 1.1.1 — 2026-11-25
+
+- Fix a CSS specificity conflict that reduced component search text to 12px on phones. Keep mobile search at 16px before and during focus to address unwanted iPhone browser focus zoom.
+- Preserve intentional browser zoom, grid zoom, keyboard visibility, and search result selection.
+- Validate with 147 automated tests, seven-layout Chromium checks for computed text size and repeated focus/close cycles, preserved 150% page zoom, and simulated keyboard checks. Physical iPhone Chrome/Safari verification remains pending; Vanilla Gravship Expanded support still needs more thorough in-game testing.
+
 ## 1.1.0 — 2026-11-25
 
 - Add 41 placeable Production items: all 26 base-game production buildings, tool cabinets and multi-analyzers, ten Biotech production/support machines, and three Anomaly production machines.
