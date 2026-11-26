@@ -1,16 +1,20 @@
 {
   "name": "rim-gravship-planner",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "node server.mjs",
     "start": "node server.mjs",
-    "test": "node --test",
+    "test": "npm run check:version && npm run test:unit && npm run test:ui",
+    "test:unit": "node --test",
+    "test:ui": "node tools/validate-ui.mjs",
+    "release:check": "npm test && git diff --check",
     "sync:version": "node tools/sync-version.mjs",
     "check:version": "node tools/sync-version.mjs --check",
     "version": "node tools/sync-version.mjs",
     "prepare:hull": "node tools/prepare-hull-textures.mjs",
     "check:hull-textures": "node tools/prepare-hull-textures.mjs --check"
-  }
+  },
+  "engines": {"node": ">=24"}
 }

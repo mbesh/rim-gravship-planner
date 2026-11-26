@@ -1,5 +1,12 @@
 # Release notes
 
+## 1.2.2 — 2026-11-26
+
+- Fix the draw-mode and erase-target typography mismatch by giving both dropdowns one shared 16px style. Shorten the selected Filled rectangle label to Filled rect. at narrow widths while retaining its full name above the grid and in the tooltip.
+- Make real-browser UI validation part of `npm test` and `npm run release:check`. Check peer typography/appearance, mobile text and control sizes, label fit, adjacency, visibility, overflow, and rendered version across ten viewport sizes.
+- Add CI validation on pushes and pull requests with retained screenshots and style reports. Require passing CI for the exact source commit and screenshot review before publishing or deploying; repeat the same UI gate against the live site.
+- Validate with 158 unit tests, the ten-size browser suite, and CI workflow linting. The browser check reproduced the original 12px-versus-16px failure before the fix. Physical-device iPhone verification remains pending; Vanilla Gravship Expanded support still needs more thorough in-game testing.
+
 ## 1.2.1 — 2026-11-26
 
 - Group the draw-mode and erase-target dropdowns directly beside each other while Erase is active on desktop and mobile. Hide the erase dropdown when Erase is off.

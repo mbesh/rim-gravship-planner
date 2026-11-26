@@ -84,7 +84,7 @@ On phones and tablets, components (including engines and field extenders) follow
 npm test
 ```
 
-The tests cover placement rules, field geometry, rotation, replacement, movement, local save data, and editor interactions using a simulated DOM/canvas.
+This required command checks the generated version, unit tests for placement and editor behavior, and real-browser UI style/layout contracts. Use Node 24+ with Chrome/Chromium installed, or set `BROWSER_BIN` to the browser executable. A missing browser fails validation. `npm run test:unit` runs only the diagnostic unit suite; it is insufficient for release validation. See [required UI validation](UI_VALIDATION.md) for viewport coverage, peer-control typography checks, screenshots, CI, and release gates.
 
 Rendering requests are batched into browser frames. Placement and movement previews share read-only validation with committed edits; tool changes reuse design checks and grav fields. Regression tests cover curved/coalesced strokes, final pointer-up positions, cancellation, one-step undo, cached sidebar updates, and saved-design changes from another tab.
 
