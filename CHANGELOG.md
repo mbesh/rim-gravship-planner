@@ -1,5 +1,11 @@
 # Release notes
 
+## 1.2.1 — 2026-11-26
+
+- Group the draw-mode and erase-target dropdowns directly beside each other while Erase is active on desktop and mobile. Hide the erase dropdown when Erase is off.
+- Keep the dropdown pair together in short landscape layouts and preserve the regular desktop drawing buttons outside erase mode.
+- Validate with 158 automated tests and desktop, small-phone, and landscape Chromium checks for dropdown adjacency, visibility, eraser targets, previews, Undo/Redo, and touch cancellation. Physical-device verification remains pending; Vanilla Gravship Expanded support still needs more thorough in-game testing.
+
 ## 1.2.0 — 2026-11-26
 
 - Add a universal Erase tool in the floating toolbar that works independently of the build palette. Its Components target preserves hull and substructure by default; choose Hull / doors, Substructure, or Everything for other layers.
